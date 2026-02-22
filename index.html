@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digital Mirror — A direction engine for life</title>
+<meta name="description" content="An OpenClaw skill that calculates whether your life is ascending or descending. From conversations you already have. Open source.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 80 80%22><defs><linearGradient id=%22g%22 x1=%220%22 y1=%220%22 x2=%2280%22 y2=%2280%22><stop offset=%220%25%22 stop-color=%22%2300d4aa%22/><stop offset=%22100%25%22 stop-color=%22%2300a080%22/></linearGradient></defs><path d=%22M40 8 L58 28 L40 48 L22 28 Z%22 fill=%22url(%23g)%22 opacity=%220.9%22/><path d=%22M40 32 L58 52 L40 72 L22 52 Z%22 fill=%22url(%23g)%22 opacity=%220.35%22/></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Newsreader:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050505; --bg-card: #0c0c0c; --bg-hover: #141414;
+    --border: #1a1a1a; --border-hover: #2a2a2a;
+    --text: #f0f0f0; --text-2: #999; --text-3: #555;
+    --accent: #00d4aa; --accent-dim: rgba(0,212,170,0.08); --accent-glow: rgba(0,212,170,0.12);
+    --red: #ff5f56; --blue: #6bb5ff; --purple: #b06bff; --orange: #ffb86b;
+    --claw-orange: #ff6b3d; --yellow: #fbbf24;
+    --font: 'Space Grotesk', -apple-system, sans-serif;
+    --serif: 'Newsreader', Georgia, serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); -webkit-font-smoothing: antialiased; line-height: 1.6; overflow-x: hidden; }
+  a { color: inherit; text-decoration: none; }
+
+  /* GRAIN OVERLAY */
+  body::after {
+    content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 9999; opacity: 0.4;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    padding: 0 40px; height: 64px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(5,5,5,0.8); backdrop-filter: blur(20px) saturate(1.2);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .logo { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 1rem; letter-spacing: -0.02em; }
+  .logo-mark { width: 28px; height: 28px; }
+  .nav-right { display: flex; align-items: center; gap: 28px; }
+  .nav-right a { font-size: 0.8rem; color: var(--text-3); transition: color 0.3s; letter-spacing: -0.01em; }
+  .nav-right a:hover { color: var(--text); }
+  .gh-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 7px 16px; background: #fff; color: #000;
+    border-radius: 8px; font-size: 0.8rem; font-weight: 600; transition: all 0.2s;
+  }
+  .gh-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .gh-btn svg { width: 15px; height: 15px; }
+
+  /* HERO */
+  .hero {
+    max-width: 1100px; margin: 0 auto;
+    padding: 180px 40px 100px; text-align: center;
+    position: relative;
+  }
+  /* Glow behind hero */
+  .hero::before {
+    content: ''; position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+    width: 600px; height: 400px;
+    background: radial-gradient(ellipse, rgba(0,212,170,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 16px; border: 1px solid rgba(255,107,61,0.25);
+    border-radius: 100px; font-family: var(--mono); font-size: 0.8rem;
+    color: var(--claw-orange); background: rgba(255,107,61,0.04);
+    margin-bottom: 40px; position: relative;
+  }
+  .pulse { width: 6px; height: 6px; background: var(--claw-orange); border-radius: 50%; animation: pulse 2.5s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  .hero h1 {
+    font-family: var(--font); font-size: clamp(3.5rem, 9vw, 7.5rem);
+    font-weight: 700; line-height: 1.0; letter-spacing: -0.04em;
+    margin-bottom: 32px; position: relative;
+  }
+  .hero h1 em {
+    font-style: italic; font-family: var(--serif); font-weight: 400; color: var(--accent);
+    background: linear-gradient(135deg, #00d4aa 0%, #00ffc8 100%);
+    -webkit-background-clip: text; -webkit-text-color: transparent; background-clip: text; color: transparent;
+  }
+  .hero-desc {
+    font-size: 1.1rem; color: var(--text-2); max-width: 520px;
+    margin: 0 auto 48px; line-height: 1.75; letter-spacing: -0.01em;
+  }
+  .hero-desc strong { color: var(--text); font-weight: 600; }
+
+  .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 16px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 14px 28px; border-radius: 10px; font-family: var(--font);
+    font-size: 0.95rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.25s;
+  }
+  .btn-primary {
+    background: var(--accent); color: #000;
+    box-shadow: 0 0 0 0 rgba(0,212,170,0);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 40px rgba(0,212,170,0.15); }
+  .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border-hover); }
+  .btn-ghost:hover { border-color: var(--text-3); background: rgba(255,255,255,0.02); }
+  .hero-note { font-family: var(--mono); font-size: 0.8rem; color: var(--text-3); margin-top: 14px; letter-spacing: 0.02em; }
+
+  .install-bar {
+    max-width: 460px; margin: 36px auto 0;
+    display: flex; align-items: center;
+    background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 18px; cursor: pointer; transition: all 0.3s;
+  }
+  .install-bar:hover { border-color: rgba(0,212,170,0.3); background: rgba(0,212,170,0.02); }
+  .install-bar code { flex: 1; font-family: var(--mono); font-size: 0.8rem; color: var(--text-2); }
+  .install-bar code span { color: var(--accent); }
+  .install-bar .copy-tag { font-family: var(--mono); font-size: 0.8rem; color: var(--text-3); background: rgba(255,255,255,0.04); padding: 4px 10px; border-radius: 6px; }
+
+  /* TERMINAL */
+  .terminal-wrap { max-width: 700px; margin: 72px auto 0; }
+  .terminal {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden;
+    box-shadow: 0 20px 80px rgba(0,0,0,0.5);
+  }
+  .terminal-bar { display: flex; align-items: center; gap: 7px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+  .terminal-dot { width: 11px; height: 11px; border-radius: 50%; }
+  .terminal-dot:nth-child(1) { background: #ff5f57; }
+  .terminal-dot:nth-child(2) { background: #febc2e; }
+  .terminal-dot:nth-child(3) { background: #28c840; }
+  .terminal-bar span { margin-left: auto; font-family: var(--mono); font-size: 0.8rem; color: var(--text-3); }
+  .terminal-body { padding: 24px; font-family: var(--mono); font-size: 0.8rem; line-height: 2; color: var(--text-2); }
+  .cmd { color: var(--accent); } .comment { color: var(--text-3); }
+  .t-green { color: var(--accent); } .t-blue { color: var(--blue); } .t-purple { color: var(--purple); }
+  .t-orange { color: var(--claw-orange); } .t-dim { color: var(--text-3); } .t-white { color: var(--text); font-weight: 500; }
+
+  /* SECTIONS */
+  .section { max-width: 900px; margin: 0 auto; padding: 120px 40px; }
+  .section-wide { max-width: 1100px; }
+  .sep { max-width: 1100px; margin: 0 auto; height: 1px; background: var(--border); }
+  .stag { font-family: var(--mono); font-size: 0.8rem; color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 20px; }
+  .stitle {
+    font-family: var(--font); font-size: clamp(2.2rem, 5vw, 3.8rem);
+    font-weight: 700; letter-spacing: -0.04em; line-height: 1.1; margin-bottom: 20px;
+  }
+  .sdesc { font-size: 0.95rem; color: var(--text-2); max-width: 540px; line-height: 1.75; }
+
+  /* INTEGRATIONS MARQUEE */
+  .integrations-section { padding: 80px 40px; max-width: 1100px; margin: 0 auto; text-align: center; }
+  .integrations-label {
+    font-family: var(--mono); font-size: 0.8rem; color: var(--text-3);
+    letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 32px;
+  }
+  .integrations-grid {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
+    max-width: 800px; margin: 0 auto 24px;
+  }
+  .int-chip {
+    padding: 8px 16px; border-radius: 8px;
+    font-family: var(--mono); font-size: 0.8rem; color: var(--text-3);
+    background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+    transition: all 0.3s; display: flex; align-items: center; gap: 6px;
+  }
+  .int-chip:hover { border-color: var(--border-hover); color: var(--text-2); }
+  .int-chip .ic { width: 16px; height: 16px; flex-shrink: 0; }
+  .int-note {
+    font-family: var(--mono); font-size: 0.8rem; color: var(--text-3);
+    margin-top: 20px;
+  }
+  .int-note em { color: var(--accent); font-style: normal; font-weight: 500; }
+
+  /* DIMENSIONS — BIG CARDS */
+  .dims-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px; margin-top: 56px; border-radius: 20px; overflow: hidden; }
+  .dim-card {
+    background: var(--bg-card); padding: 40px;
+    transition: background 0.3s; position: relative; overflow: hidden;
+  }
+  .dim-card:hover { background: var(--bg-hover); }
+  .dim-card::after {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+  }
+  .dim-full { grid-column: 1 / -1; }
+  .dim-emoji { font-size: 2rem; margin-bottom: 16px; display: block; }
+  .dim-card h3 { font-family: var(--font); font-size: 1.1rem; font-weight: 600; margin-bottom: 10px; letter-spacing: -0.02em; }
+  .dim-card p { font-size: 0.95rem; color: var(--text-2); line-height: 1.7; max-width: 400px; }
+
+  /* CALIBRATION */
+  .cal-visual { margin-top: 56px; display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; }
+  .cal-day {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-family: var(--mono); color: var(--text-3);
+    transition: all 0.3s;
+  }
+  .cal-day.done { background: var(--accent-dim); border-color: rgba(0,212,170,0.2); color: var(--accent); }
+  .cal-day.active { background: rgba(0,212,170,0.15); border-color: var(--accent); color: var(--accent); font-weight: 700; box-shadow: 0 0 20px rgba(0,212,170,0.1); }
+  .cal-day.final { border-color: rgba(0,212,170,0.4); color: var(--accent); }
+
+  .dir-labels { display: flex; gap: 48px; justify-content: center; margin-top: 56px; flex-wrap: wrap; }
+  .dir-label { text-align: center; }
+  .dir-arrow { font-size: 2.4rem; font-weight: 700; line-height: 1; }
+  .dir-text { font-size: 0.8rem; color: var(--text-3); margin-top: 6px; font-family: var(--mono); }
+
+  /* ARCHITECTURE */
+  .arch {
+    margin-top: 56px; padding: 40px;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px;
+    position: relative; overflow: hidden;
+  }
+  .arch::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at center, rgba(0,212,170,0.03) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .arch-label { font-family: var(--mono); font-size: 0.8rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.12em; text-align: center; margin-bottom: 32px; }
+  .arch-flow { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; position: relative; }
+  .arch-box { padding: 16px 24px; border-radius: 14px; font-size: 0.95rem; font-weight: 500; text-align: center; min-width: 140px; }
+  .arch-agents { background: rgba(255,107,61,0.06); border: 1px solid rgba(255,107,61,0.15); color: var(--claw-orange); }
+  .arch-mirror { background: rgba(0,212,170,0.06); border: 1px solid rgba(0,212,170,0.2); color: var(--accent); font-weight: 700; padding: 20px 28px; font-size: 1.1rem; }
+  .arch-you { background: rgba(255,184,107,0.06); border: 1px solid rgba(255,184,107,0.15); color: var(--orange); }
+  .arch-arrow { color: var(--text-3); font-size: 1.4rem; }
+  .arch-sub-row { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+  .arch-sub { padding: 4px 10px; border-radius: 6px; font-family: var(--mono); font-size: 0.8rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); color: var(--text-3); }
+
+  /* ZERO COST CALLOUT */
+  .zero-cost {
+    margin-top: 32px; text-align: center;
+    padding: 20px; border-radius: 12px;
+    background: rgba(0,212,170,0.03); border: 1px solid rgba(0,212,170,0.1);
+  }
+  .zero-cost p { font-family: var(--mono); font-size: 0.8rem; color: var(--text-2); }
+  .zero-cost strong { color: var(--accent); font-weight: 600; }
+
+  /* STEPS */
+  .steps { margin-top: 40px; display: flex; flex-direction: column; gap: 2px; border-radius: 16px; overflow: hidden; }
+  .step { display: flex; align-items: flex-start; gap: 24px; padding: 28px; background: var(--bg-card); transition: background 0.3s; }
+  .step:hover { background: var(--bg-hover); }
+  .step-num {
+    font-family: var(--mono); font-size: 0.8rem; color: var(--accent);
+    min-width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+    background: var(--accent-dim); border-radius: 8px; margin-top: 2px;
+  }
+  .step h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 6px; }
+  .step p { font-size: 0.95rem; color: var(--text-2); line-height: 1.6; }
+  .step code { font-family: var(--mono); font-size: 0.8rem; background: var(--accent-dim); color: var(--accent); padding: 3px 10px; border-radius: 6px; }
+
+  /* ROADMAP */
+  .roadmap-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin-top: 56px; border-radius: 20px; overflow: hidden; }
+  .rm-card { background: var(--bg-card); padding: 32px; }
+  .rm-card.current { background: rgba(0,212,170,0.02); }
+  .rm-phase { font-family: var(--mono); font-size: 0.8rem; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; }
+  .rm-phase.now { color: var(--accent); } .rm-phase.next { color: var(--yellow); } .rm-phase.future { color: var(--text-3); }
+  .rm-card h3 { font-family: var(--font); font-size: 1.1rem; font-weight: 600; margin-bottom: 10px; }
+  .rm-card > p { font-size: 0.95rem; color: var(--text-2); line-height: 1.6; margin-bottom: 20px; }
+  .rm-items { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .rm-items li { font-size: 0.95rem; color: var(--text-2); display: flex; align-items: center; gap: 8px; }
+  .rm-items .done { color: var(--accent); } .rm-items .pending { color: var(--text-3); }
+
+  /* STORY */
+  .story-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 48px; margin-top: 56px;
+    position: relative; overflow: hidden;
+  }
+  .story-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--accent), var(--claw-orange)); }
+  .story-quote { font-family: var(--serif); font-size: 1.4rem; font-style: italic; line-height: 1.7; margin-bottom: 24px; }
+  .story-author { font-family: var(--mono); font-size: 0.8rem; color: var(--text-3); }
+
+  /* PRIVACY */
+  .privacy-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; margin-top: 56px; border-radius: 16px; overflow: hidden; }
+  .priv-card {
+    background: var(--bg-card); padding: 28px; text-align: center;
+    transition: background 0.3s;
+  }
+  .priv-card:hover { background: var(--bg-hover); }
+  .priv-icon { font-size: 1.6rem; margin-bottom: 12px; }
+  .priv-card h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 6px; }
+  .priv-card p { font-size: 0.95rem; color: var(--text-3); line-height: 1.5; }
+
+  /* CONTACT */
+  .contact-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin-top: 56px; border-radius: 16px; overflow: hidden; }
+  .contact-card {
+    background: var(--bg-card); padding: 32px; text-align: center;
+    transition: background 0.3s;
+  }
+  .contact-card:hover { background: var(--bg-hover); }
+  .contact-icon { font-size: 1.6rem; margin-bottom: 12px; }
+  .contact-card h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 6px; }
+  .contact-card p { font-size: 0.95rem; color: var(--text-3); margin-bottom: 14px; line-height: 1.5; }
+  .contact-link { font-family: var(--mono); font-size: 0.8rem; color: var(--accent); }
+
+  /* NEWSLETTER */
+  .newsletter-form {
+    max-width: 440px; margin: 0 auto; display: flex; gap: 8px;
+  }
+  .newsletter-form input[type="email"] {
+    flex: 1; padding: 14px 18px; background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text); font-family: var(--font); font-size: 0.95rem;
+    outline: none; transition: border-color 0.3s;
+  }
+  .newsletter-form input[type="email"]:focus { border-color: rgba(0,212,170,0.4); }
+  .newsletter-form input[type="submit"] {
+    padding: 14px 28px; background: var(--accent); color: #000; border: none;
+    border-radius: 10px; font-family: var(--font); font-size: 0.95rem; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .newsletter-form input[type="submit"]:hover { opacity: 0.9; transform: translateY(-1px); }
+
+  /* CTA */
+  .cta { text-align: center; padding: 140px 40px; max-width: 700px; margin: 0 auto; }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--border); padding: 36px 40px;
+    max-width: 1100px; margin: 0 auto;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  footer .fl { font-family: var(--mono); font-size: 0.8rem; color: var(--text-3); }
+  footer .fr { display: flex; gap: 24px; }
+  footer .fr a { font-family: var(--mono); font-size: 0.8rem; color: var(--text-3); transition: color 0.3s; }
+  footer .fr a:hover { color: var(--text-2); }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  .hero-tag, .hero h1, .hero-desc, .hero-actions, .hero-note, .install-bar, .terminal-wrap {
+    animation: fadeUp 0.8s ease-out both;
+  }
+  .hero h1 { animation-delay: 0.1s; }
+  .hero-desc { animation-delay: 0.2s; }
+  .hero-actions { animation-delay: 0.3s; }
+  .hero-note { animation-delay: 0.35s; }
+  .install-bar { animation-delay: 0.4s; }
+  .terminal-wrap { animation-delay: 0.5s; }
+
+  @media(max-width:768px) {
+    nav { padding: 0 20px; }
+    .hero { padding: 140px 20px 80px; }
+    .section { padding: 80px 20px; }
+    .dims-grid { grid-template-columns: 1fr; }
+    .roadmap-grid { grid-template-columns: 1fr; }
+    .contact-grid { grid-template-columns: 1fr; }
+    .privacy-grid { grid-template-columns: repeat(2, 1fr); }
+    .arch-flow { flex-direction: column; }
+    .arch-arrow { transform: rotate(90deg); }
+    .integrations-section { padding: 60px 20px; }
+    footer { flex-direction: column; gap: 16px; text-align: center; }
+  }
+  @media(max-width:480px) {
+    .nav-right a:not(.gh-btn) { display: none; }
+    .privacy-grid { grid-template-columns: 1fr; }
+    .newsletter-form { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">
+    <div class="logo-mark"><svg width="22" height="22" viewBox="0 0 80 80" fill="none"><defs><linearGradient id="lg" x1="0" y1="0" x2="80" y2="80"><stop offset="0%" stop-color="#00d4aa"/><stop offset="100%" stop-color="#00a080"/></linearGradient></defs><path d="M40 8 L58 28 L40 48 L22 28 Z" fill="url(#lg)" opacity="0.9"/><path d="M40 32 L58 52 L40 72 L22 52 Z" fill="url(#lg)" opacity="0.35"/></svg></div>
+    Digital Mirror
+  </div>
+  <div class="nav-right">
+    <a href="#dimensions">Dimensions</a>
+    <a href="#how">How it works</a>
+    <a href="#roadmap">Roadmap</a>
+    <a href="https://github.com/CristianAndrei01/digital-mirror" class="gh-btn">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+      GitHub
+    </a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag"><span class="pulse"></span>OpenClaw Skill · Open Source · Self-Hosted</div>
+  <h1>Are you busy<br>or <em>progressing</em>?</h1>
+  <p class="hero-desc">Digital Mirror calculates the direction of your life from conversations you already have with your AI agent. <strong>Not a tracker. A direction engine.</strong></p>
+  <div class="hero-actions">
+    <a href="https://github.com/CristianAndrei01/digital-mirror" class="btn btn-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+      Star on GitHub
+    </a>
+    <a href="#how" class="btn btn-ghost">How it works →</a>
+  </div>
+  <div class="hero-note">MIT License · Self-hosted · Your data never leaves your machine</div>
+  <div class="install-bar" onclick="navigator.clipboard.writeText('clawhub install digital-mirror');this.querySelector('.copy-tag').textContent='Copied!'">
+    <code><span>$</span> clawhub install digital-mirror</code>
+    <span class="copy-tag">click to copy</span>
+  </div>
+
+  <!-- TERMINAL DEMO -->
+  <div class="terminal-wrap">
+    <div class="terminal">
+      <div class="terminal-bar"><div class="terminal-dot"></div><div class="terminal-dot"></div><div class="terminal-dot"></div><span>openclaw agent</span></div>
+      <div class="terminal-body">
+        <span class="comment">you:</span> Spent $450 on new tires. Had 3 meetings today,<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;gym after work. Helped kids with homework tonight.<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Beers with Marco on Saturday.<br><br>
+        <span class="t-orange">agent:</span> Tires — necessary expense. Solid day.<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sounds like a full evening with the family.<br><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-dim">🪞 mirror logged 5 entries</span><br><br>
+        <span class="comment">you:</span> what's my direction?<br><br>
+        <span class="t-orange">agent:</span><br><br>
+        &nbsp;&nbsp;&nbsp;<span class="t-white">◈ WEEKLY DIRECTION</span><br><br>
+        &nbsp;&nbsp;&nbsp;<span class="t-blue">💰 Finance</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-dim">Direction:</span> <span class="t-orange">Down</span>&nbsp;&nbsp;<span class="t-dim">Stability:</span> Moderate<br>
+        &nbsp;&nbsp;&nbsp;<span class="t-green">🏃 Health</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-dim">Direction:</span> <span class="cmd">Up</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-dim">Stability:</span> Stable<br>
+        &nbsp;&nbsp;&nbsp;<span class="t-orange">🚀 Career</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-dim">Direction:</span> Stable&nbsp;<span class="t-dim">Stability:</span> Stable<br>
+        &nbsp;&nbsp;&nbsp;<span class="t-purple">🤝 Social</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-dim">Direction:</span> <span class="cmd">Up</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-dim">Stability:</span> Stable<br>
+        &nbsp;&nbsp;&nbsp;<span style="color:var(--yellow)">👨‍👩‍👧‍👦 Family</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-dim">Direction:</span> Stable&nbsp;<span class="t-dim">Stability:</span> Stable<br><br>
+        &nbsp;&nbsp;&nbsp;<span class="t-dim">◈ "Health ascending and consistent. Social up — plans</span><br>
+        &nbsp;&nbsp;&nbsp;<span class="t-dim">&nbsp;&nbsp;this weekend. Finance shifted down — spending spike.</span><br>
+        &nbsp;&nbsp;&nbsp;<span class="t-dim">&nbsp;&nbsp;Family and career both stable."</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sep"></div>
+
+<!-- INTEGRATIONS -->
+<div class="integrations-section">
+  <div class="integrations-label">Reads from your existing data sources</div>
+  <div class="integrations-grid">
+    <div class="int-chip"><svg class="ic" viewBox="0 0 24 24" fill="#44A8B3"><path d="M3 7l4.5 12L12 9.5 16.5 19 21 7h-3.5l-1.5 5.5L12 4 7.5 12.5 6 7z"/></svg> WHOOP</div>
+    <div class="int-chip"><svg class="ic" viewBox="0 0 24 24" fill="#D4D4D4"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3.5a6.5 6.5 0 110 13 6.5 6.5 0 010-13z"/></svg> Oura</div>
+    <div class="int-chip"><svg class="ic" viewBox="0 0 24 24" fill="#00B0B9"><circle cx="12" cy="4.5" r="2.8"/><circle cx="12" cy="12" r="2.8"/><circle cx="12" cy="19.5" r="2.8"/></svg> Fitbit</div>
+    <div class="int-chip"><svg class="ic" viewBox="0 0 24 24" fill="#007CC3"><path d="M12 2L2 19h20L12 2zm0 5l6.5 10h-13L12 7z"/></svg> Garmin</div>
+    <div class="int-chip"><svg class="ic" viewBox="0 0 24 24" fill="#FF2D55"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> Apple Health</div>
+    <div class="int-chip"><svg class="ic" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.39 6.56L12 13.39 8.61 6.56H3.35L12 22l8.65-15.44h-5.26zm-3.39 9.2l-2.94-5.25h5.88L12 15.76z"/></svg> Strava</div>
+    <div class="int-chip"><svg class="ic" viewBox="0 0 24 24" fill="#85C3E9"><path d="M3 3v18h18V3H3zm4 14V7h2v10H7zm4 0V9h2v8h-2zm4 0V5h2v12h-2z"/></svg> YNAB</div>
+    <div class="int-chip"><svg class="ic" viewBox="0 0 24 24"><circle cx="7" cy="7" r="3" fill="#D4D4D4"/><circle cx="17" cy="7" r="3" fill="#D4D4D4"/><circle cx="7" cy="17" r="3" fill="#D4D4D4"/><rect x="14" y="14" width="6" height="6" rx="1" fill="#D4D4D4"/></svg> Plaid</div>
+    <div class="int-chip"><svg class="ic" viewBox="0 0 24 24" fill="#0075EB"><circle cx="12" cy="12" r="10"/><path d="M8 9h2.5v6H8zm3 0h2.5L16 15h-2.5z" fill="#050505"/></svg> Revolut</div>
+    <div class="int-chip"><svg class="ic" viewBox="0 0 24 24" fill="#E6EDF3"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.49.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.46-1.11-1.46-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.53 2.34 1.09 2.91.83.09-.65.35-1.09.64-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.03a9.56 9.56 0 015 0c1.91-1.3 2.75-1.03 2.75-1.03.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.94.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10.01 10.01 0 0022 12c0-5.52-4.48-10-10-10z"/></svg> GitHub</div>
+    <div class="int-chip"><svg class="ic" viewBox="0 0 24 24" fill="#EFEFEF"><path d="M4 4h6.5v7H4V4zm0 9h6.5v7H4v-7zm9.5-9H20v16h-6.5V4zM7.25 5.5v4h1.5v-4h-1.5zM7.25 14.5v4h1.5v-4h-1.5z"/></svg> Notion</div>
+    <div class="int-chip"><svg class="ic" viewBox="0 0 24 24" fill="#5E6AD2"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg> Linear</div>
+    <div class="int-chip"><svg class="ic" viewBox="0 0 24 24" fill="#2684FF"><path d="M12.005 2a2.5 2.5 0 00-1.768 4.268L5.87 10.636a2.5 2.5 0 100 2.728l4.367 4.368A2.5 2.5 0 1014.6 14.6l-3.232-3.232a2.52 2.52 0 000-2.728L14.6 5.4A2.5 2.5 0 0012.005 2z"/></svg> Jira</div>
+    <div class="int-chip"><svg class="ic" viewBox="0 0 24 24" fill="#E44332"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1.5 14.5l-5-5 1.41-1.41L10.5 13.67l7.09-7.09 1.41 1.41-8.5 8.51z"/></svg> Todoist</div>
+    <div class="int-chip"><svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M5.04 15.17a2.52 2.52 0 112.52-2.52h-2.52v2.52zm1.27 0a2.52 2.52 0 115.04 0v6.31a2.52 2.52 0 11-5.04 0v-6.31z" fill="#E01E5A"/><path d="M8.83 5.04a2.52 2.52 0 11-2.52-2.52v2.52h2.52zm0 1.27a2.52 2.52 0 110 5.04H2.52a2.52 2.52 0 110-5.04h6.31z" fill="#36C5F0"/><path d="M18.96 8.83a2.52 2.52 0 11-2.52 2.52V8.83h2.52zm-1.27 0a2.52 2.52 0 11-5.04 0V2.52a2.52 2.52 0 115.04 0v6.31z" fill="#2EB67D"/><path d="M15.17 18.96a2.52 2.52 0 112.52 2.52h-2.52v-2.52zm0-1.27a2.52 2.52 0 110-5.04h6.31a2.52 2.52 0 110 5.04h-6.31z" fill="#ECB22E"/></svg> Slack</div>
+    <div class="int-chip"><svg class="ic" viewBox="0 0 24 24" fill="#26A5E4"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.37.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg> Telegram</div>
+    <div class="int-chip"><svg class="ic" viewBox="0 0 24 24" fill="#5865F2"><path d="M20.32 4.37a19.8 19.8 0 00-4.89-1.52.07.07 0 00-.07.04c-.21.38-.44.86-.61 1.25a18.27 18.27 0 00-5.49 0c-.17-.39-.4-.87-.62-1.25a.07.07 0 00-.07-.04 19.74 19.74 0 00-4.89 1.52.06.06 0 00-.03.02C.53 9.05-.32 13.58.1 18.06a.08.08 0 00.03.06 19.9 19.9 0 005.99 3.03.08.08 0 00.08-.03c.46-.63.87-1.3 1.23-1.99a.08.08 0 00-.04-.11 13.1 13.1 0 01-1.87-.89.08.08 0 01-.01-.13c.13-.09.25-.19.37-.29a.07.07 0 01.08-.01c3.93 1.79 8.18 1.79 12.06 0a.07.07 0 01.08.01c.12.1.25.2.37.29a.08.08 0 01-.01.13c-.6.35-1.22.65-1.87.89a.08.08 0 00-.04.11c.36.7.77 1.36 1.23 1.99a.08.08 0 00.08.03 19.84 19.84 0 006-3.03.08.08 0 00.03-.06c.5-5.18-.84-9.67-3.55-13.66a.06.06 0 00-.03-.02zM8.02 15.33c-1.18 0-2.16-1.09-2.16-2.42 0-1.33.96-2.42 2.16-2.42 1.21 0 2.18 1.1 2.16 2.42 0 1.33-.96 2.42-2.16 2.42zm7.97 0c-1.18 0-2.16-1.09-2.16-2.42 0-1.33.96-2.42 2.16-2.42 1.21 0 2.18 1.1 2.16 2.42 0 1.33-.95 2.42-2.16 2.42z"/></svg> Discord</div>
+    <div class="int-chip"><svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M2 6v12c0 1.1.9 2 2 2h1V7.38l7 5.25 7-5.25V20h1c1.1 0 2-.9 2-2V6c0-1.5-1.67-2.37-2.88-1.5L12 9.88 4.88 4.5C3.67 3.63 2 4.5 2 6z" fill="#EA4335"/></svg> Gmail</div>
+    <div class="int-chip"><svg class="ic" viewBox="0 0 24 24" fill="#4285F4"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg> Calendar</div>
+    <div class="int-chip"><svg class="ic" viewBox="0 0 24 24" fill="#41BDF5"><path d="M12 2L2 12h3v8h6v-6h2v6h6v-8h3L12 2zm0 2.84L18.16 11H17v8h-3v-6H10v6H7v-8H5.84L12 4.84z"/></svg> Home Assistant</div>
+  </div>
+  <div class="int-note">Works with <em>100+ OpenClaw integrations</em>. No extra setup — Mirror reads what your agent already collects.</div>
+</div>
+
+<div class="sep"></div>
+
+<!-- DIMENSIONS -->
+<div class="section section-wide" id="dimensions">
+  <div class="stag">5 Dimensions</div>
+  <h2 class="stitle">What gets measured.</h2>
+  <p class="sdesc">Categorical direction. Relative to your own patterns, not anyone else's.</p>
+  <div class="dims-grid">
+    <div class="dim-card"><span class="dim-emoji">💰</span><h3>Finance</h3><p>Spending, income, saving patterns. Catches amounts and context from conversation. Flags when spending velocity shifts relative to your baseline.</p></div>
+    <div class="dim-card"><span class="dim-emoji">🏃</span><h3>Health</h3><p>Sleep, movement, energy, nutrition. From what you mention and what your wearables report. Direction calculated against your own patterns.</p></div>
+    <div class="dim-card"><span class="dim-emoji">🚀</span><h3>Career</h3><p>Meetings, projects, learning, output. Detects plateau patterns when direction has been flat for an extended period. Observation, not judgment.</p></div>
+    <div class="dim-card"><span class="dim-emoji">🤝</span><h3>Social</h3><p>Friends, networking, community. Dinners out, calls, meaningful interactions. Connection frequency and consistency.</p></div>
+    <div class="dim-card dim-full"><span class="dim-emoji">👨‍👩‍👧‍👦</span><h3>Family</h3><p>Spouse, children, time together. Activates automatically when you mention family context. Separate from Social because strong friendships and weak family presence are different signals.</p></div>
+  </div>
+</div>
+
+<div class="sep"></div>
+
+<!-- CALIBRATION -->
+<div class="section">
+  <div class="stag">Personalized Baseline</div>
+  <h2 class="stitle">14 days to learn<br>your patterns.</h2>
+  <p class="sdesc">Mirror doesn't use universal benchmarks. It observes YOUR patterns for 14 days, then calculates direction relative to YOUR baseline. Adaptive thresholds per dimension.</p>
+  <div class="cal-visual">
+    <div class="cal-day done">1</div><div class="cal-day done">2</div><div class="cal-day done">3</div><div class="cal-day done">4</div><div class="cal-day done">5</div><div class="cal-day done">6</div><div class="cal-day done">7</div><div class="cal-day active">8</div><div class="cal-day active">9</div><div class="cal-day">10</div><div class="cal-day">11</div><div class="cal-day">12</div><div class="cal-day">13</div><div class="cal-day final">14</div>
+  </div>
+  <div class="dir-labels">
+    <div class="dir-label"><div class="dir-arrow" style="color:var(--accent)">↑</div><div class="dir-text">Ascending</div></div>
+    <div class="dir-label"><div class="dir-arrow" style="color:var(--text-3)">→</div><div class="dir-text">At baseline</div></div>
+    <div class="dir-label"><div class="dir-arrow" style="color:var(--red)">↓</div><div class="dir-text">Descending</div></div>
+  </div>
+</div>
+
+<div class="sep"></div>
+
+<!-- HOW IT WORKS -->
+<div class="section section-wide" id="how">
+  <div class="stag">Architecture</div>
+  <h2 class="stitle">Your agent talks.<br>Mirror calculates.</h2>
+  <p class="sdesc">Install the skill, start the backend, keep talking to your agent. Mirror catches the data and calculates trajectory.</p>
+  <div class="arch">
+    <div class="arch-label">How data flows</div>
+    <div class="arch-flow">
+      <div>
+        <div class="arch-box arch-agents">🦞 OpenClaw Agent</div>
+        <div class="arch-sub-row"><span class="arch-sub">Telegram</span><span class="arch-sub">Discord</span><span class="arch-sub">Slack</span><span class="arch-sub">WhatsApp</span></div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div>
+        <div class="arch-box arch-mirror">🪞 Digital Mirror</div>
+        <div class="arch-sub-row"><span class="arch-sub">Direction Engine</span><span class="arch-sub">Baseline</span><span class="arch-sub">Stability</span></div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div>
+        <div class="arch-box arch-you">You</div>
+        <div class="arch-sub-row"><span class="arch-sub">Dashboard</span><span class="arch-sub">Agent Chat</span><span class="arch-sub">API</span></div>
+      </div>
+    </div>
+    <div class="zero-cost">
+      <p><strong>Zero extra tokens.</strong> Mirror reads session files from disk. Your LLM bill stays the same.</p>
+    </div>
+  </div>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div><h3>Start the backend</h3><p><code>git clone</code> → <code>npm install</code> → <code>npm start</code></p></div></div>
+    <div class="step"><div class="step-num">2</div><div><h3>Install the skill</h3><p><code>clawhub install digital-mirror</code> — or copy the skill folder to your workspace.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div><h3>Keep talking</h3><p>No behavior change needed. Mirror catches life data from your normal conversations. Ask "what's my direction?" anytime.</p></div></div>
+  </div>
+</div>
+
+<div class="sep"></div>
+
+<!-- PRIVACY -->
+<div class="section section-wide">
+  <div class="stag">Privacy</div>
+  <h2 class="stitle">Your data. Your machine.</h2>
+  <p class="sdesc">Digital Mirror is self-hosted by design. Nothing leaves your infrastructure.</p>
+  <div class="privacy-grid">
+    <div class="priv-card"><div class="priv-icon">🏠</div><h3>Self-hosted</h3><p>Runs on your machine. Nothing phones home.</p></div>
+    <div class="priv-card"><div class="priv-icon">🚫</div><h3>No cloud sync</h3><p>Your data stays local. No external servers.</p></div>
+    <div class="priv-card"><div class="priv-icon">📡</div><h3>No telemetry</h3><p>Zero data collection. Zero tracking.</p></div>
+    <div class="priv-card"><div class="priv-icon">🔒</div><h3>Full autonomy</h3><p>You control what gets tracked and when.</p></div>
+  </div>
+</div>
+
+<div class="sep"></div>
+
+<!-- ROADMAP -->
+<div class="section section-wide" id="roadmap">
+  <div class="stag">Roadmap</div>
+  <h2 class="stitle">What's built. What's next.</h2>
+  <div class="roadmap-grid">
+    <div class="rm-card current">
+      <div class="rm-phase now">v1 — Now</div><h3>Foundation</h3><p>Core direction engine. Baseline calibration. Categorical output.</p>
+      <ul class="rm-items"><li><span class="done">✓</span> 5-dimension scoring</li><li><span class="done">✓</span> 14-day baseline calibration</li><li><span class="done">✓</span> Adaptive thresholds</li><li><span class="done">✓</span> Up / Stable / Down output</li><li><span class="done">✓</span> REST API + dashboard</li><li><span class="done">✓</span> Open source (MIT)</li></ul>
+    </div>
+    <div class="rm-card">
+      <div class="rm-phase next">v2 — Next</div><h3>Direction Engine</h3><p>Deeper metrics. Stability index. Structured data parsing.</p>
+      <ul class="rm-items"><li><span class="pending">○</span> Directional Deviation Score</li><li><span class="pending">○</span> Life Stability Index</li><li><span class="pending">○</span> Wearable data parsing</li><li><span class="pending">○</span> Weekly Strategic Snapshot</li><li><span class="pending">○</span> Monthly Reflection</li><li><span class="pending">○</span> Context Mode</li></ul>
+    </div>
+    <div class="rm-card">
+      <div class="rm-phase future">v3 — Future</div><h3>Intelligence Layer</h3><p>Cross-dimension correlation. Predictive trajectory.</p>
+      <ul class="rm-items"><li><span class="pending">○</span> Cross-dimension correlation</li><li><span class="pending">○</span> Decision impact awareness</li><li><span class="pending">○</span> Predictive direction notes</li><li><span class="pending">○</span> Direct chat (Telegram)</li><li><span class="pending">○</span> Bank API connections</li><li><span class="pending">○</span> Wearable direct APIs</li></ul>
+    </div>
+  </div>
+</div>
+
+<div class="sep"></div>
+
+<!-- ORIGIN -->
+<div class="section" id="story">
+  <div class="stag">Origin</div>
+  <h2 class="stitle">The data existed.<br>The intelligence layer didn't.</h2>
+  <div class="story-card">
+    <div class="story-quote">"I build companies. I raise 5 kids. I make dozens of decisions a day. But I had no objective signal for whether the direction of my life was ascending or descending. Not as a feeling — as data. My agent already had the information. Nobody was calculating the trajectory. So I built the layer that does."</div>
+    <div class="story-author">— Cristian Andrei · Built with AI-assisted development using Claude</div>
+  </div>
+</div>
+
+<div class="sep"></div>
+
+<!-- CONTACT -->
+<div class="section section-wide">
+  <div class="stag">Connect</div>
+  <h2 class="stitle">Get involved.</h2>
+  <p class="sdesc">Report bugs, propose features, contribute code, or just say hello.</p>
+  <div class="contact-grid">
+    <a href="https://github.com/CristianAndrei01/digital-mirror/issues" class="contact-card">
+      <div class="contact-icon">🐛</div>
+      <h3>GitHub Issues</h3>
+      <p>Bugs, features, PRs.<br>Open source contributions welcome.</p>
+      <span class="contact-link">Open an issue →</span>
+    </a>
+    <a href="https://discord.gg/digitalmirror" class="contact-card">
+      <div class="contact-icon">💬</div>
+      <h3>Discord</h3>
+      <p>Digital Mirror Community.<br>Feedback, discussion, ideas.</p>
+      <span class="contact-link">Join server →</span>
+    </a>
+    <a href="mailto:c@thedigitalmirror.ai" class="contact-card">
+      <div class="contact-icon">✉️</div>
+      <h3>Email</h3>
+      <p>Direct line.<br>For anything else.</p>
+      <span class="contact-link">c@thedigitalmirror.ai</span>
+    </a>
+  </div>
+</div>
+
+<div class="sep"></div>
+
+<!-- NEWSLETTER -->
+<div class="section" style="text-align: center;">
+  <div class="stag">⟩ Stay in the Loop</div>
+  <h2 class="stitle">Get updates on new features.</h2>
+  <p class="sdesc" style="margin: 0 auto 36px;">Scoring updates, new dimensions, development logs. No spam. Unsubscribe anytime.</p>
+  <form action="https://buttondown.com/api/emails/embed-subscribe/Cristian.Andrei" method="post" class="newsletter-form">
+    <input type="email" name="email" placeholder="your@email.com" required>
+    <input type="submit" value="Subscribe">
+  </form>
+</div>
+
+<div class="sep"></div>
+
+<!-- CTA -->
+<div class="cta">
+  <h2 class="stitle">Direction, not tracking.</h2>
+  <p class="sdesc" style="margin: 0 auto 36px;">Open source. Self-hosted. Zero extra tokens. Your data stays on your machine.</p>
+  <a href="https://github.com/CristianAndrei01/digital-mirror" class="btn btn-primary">⭐ Star on GitHub</a>
+  <div class="install-bar" style="margin: 24px auto 0;" onclick="navigator.clipboard.writeText('clawhub install digital-mirror');this.querySelector('.copy-tag').textContent='Copied!'">
+    <code><span>$</span> clawhub install digital-mirror</code>
+    <span class="copy-tag">click to copy</span>
+  </div>
+</div>
+
+<footer>
+  <div class="fl">© 2026 Digital Mirror · MIT License · Built by <a href="https://vanguardxyz.ai" style="color:var(--accent);">Vanguard</a> & <a href="https://github.com/CristianAndrei01" style="color:var(--accent);">Cristian</a></div>
+  <div class="fr">
+    <a href="https://github.com/CristianAndrei01/digital-mirror">GitHub</a>
+    <a href="https://discord.gg/digitalmirror">Discord</a>
+  </div>
+</footer>
+
+</body>
+</html>

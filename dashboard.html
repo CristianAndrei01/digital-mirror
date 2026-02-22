@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digital Mirror — Dashboard</title>
+<style>
+  :root {
+    --bg: #0a0a0a; --card: #111; --border: #1e1e1e;
+    --text: #ededed; --text2: #999; --text3: #555;
+    --green: #00d4aa; --red: #ff6b6b; --yellow: #ffd93d; --blue: #6bb5ff;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --mono: 'Courier New', monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); padding: 24px; max-width: 900px; margin: 0 auto; }
+
+  header { display: flex; justify-content: space-between; align-items: center; padding: 16px 0 32px; border-bottom: 1px solid var(--border); margin-bottom: 32px; }
+  .logo { font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .logo svg { width: 24px; height: 24px; }
+  .status { font-family: var(--mono); font-size: 0.72rem; color: var(--text3); display: flex; align-items: center; gap: 6px; }
+  .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+  .dot.error { background: var(--red); }
+  .dot.loading { background: var(--yellow); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-bottom: 32px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .card-dim { font-size: 0.75rem; color: var(--text2); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .card-dim .confidence { font-family: var(--mono); font-size: 0.62rem; color: var(--text3); }
+  .card-dir { font-size: 1.8rem; font-weight: 700; margin-bottom: 4px; }
+  .card-dir.up { color: var(--green); }
+  .card-dir.down { color: var(--red); }
+  .card-dir.stable { color: var(--text2); }
+  .card-dir.calibrating { color: var(--yellow); font-size: 1rem; padding-top: 6px; }
+  .card-stab { font-family: var(--mono); font-size: 0.72rem; color: var(--text3); }
+  .calib-bar { margin-top: 10px; height: 2px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .calib-bar-fill { height: 100%; background: var(--yellow); border-radius: 2px; transition: width 0.4s; }
+  .calib-label { font-family: var(--mono); font-size: 0.6rem; color: var(--yellow); margin-top: 4px; }
+
+  .snapshot { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 32px; }
+  .snapshot h2 { font-size: 0.85rem; color: var(--text2); margin-bottom: 16px; }
+  .snapshot pre { font-family: var(--mono); font-size: 0.78rem; color: var(--text); line-height: 1.8; white-space: pre-wrap; }
+
+  .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 32px; }
+  .meta-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+  .meta-label { font-size: 0.68rem; color: var(--text3); font-family: var(--mono); margin-bottom: 4px; }
+  .meta-value { font-size: 1.1rem; font-weight: 600; }
+
+  .input-section { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 32px; }
+  .input-section h2 { font-size: 0.85rem; color: var(--text2); margin-bottom: 12px; }
+  .input-row { display: flex; gap: 8px; }
+  .input-row input { flex: 1; padding: 10px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: var(--font); font-size: 0.85rem; outline: none; }
+  .input-row input:focus { border-color: var(--green); }
+  .input-row button { padding: 10px 20px; background: var(--green); color: var(--bg); border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.85rem; transition: opacity 0.15s; }
+  .input-row button:hover { opacity: 0.9; }
+  .input-row button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .input-result { margin-top: 12px; font-family: var(--mono); font-size: 0.75rem; color: var(--text2); min-height: 20px; }
+
+  .empty { text-align: center; padding: 60px 20px; color: var(--text3); }
+  .empty h2 { font-size: 1.1rem; color: var(--text2); margin-bottom: 8px; }
+  .empty p { font-size: 0.85rem; line-height: 1.6; }
+
+  .error-banner { background: #1a0a0a; border: 1px solid #3a1a1a; border-radius: 12px; padding: 20px 24px; margin-bottom: 32px; display: none; }
+  .error-banner h2 { font-size: 0.85rem; color: var(--red); margin-bottom: 6px; }
+  .error-banner p { font-size: 0.78rem; color: var(--text3); font-family: var(--mono); }
+
+  footer { text-align: center; padding: 32px 0; border-top: 1px solid var(--border); }
+  footer a { font-family: var(--mono); font-size: 0.68rem; color: var(--text3); margin: 0 12px; text-decoration: none; }
+  footer a:hover { color: var(--green); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 80 80" fill="none"><defs><linearGradient id="lg" x1="0" y1="0" x2="80" y2="80"><stop offset="0%" stop-color="#00d4aa"/><stop offset="100%" stop-color="#00a080"/></linearGradient></defs><path d="M40 8 L58 28 L40 48 L22 28 Z" fill="url(#lg)" opacity="0.9"/><path d="M40 32 L58 52 L40 72 L22 52 Z" fill="url(#lg)" opacity="0.35"/></svg>
+    Digital Mirror
+  </div>
+  <div class="status" id="status-indicator">
+    <span class="dot loading" id="status-dot"></span>
+    <span id="status-text">connecting…</span>
+  </div>
+</header>
+
+<div class="error-banner" id="error-banner">
+  <h2>◈ API Unreachable</h2>
+  <p id="error-detail">Could not connect to Digital Mirror backend.</p>
+</div>
+
+<div id="meta" class="meta"></div>
+<div id="dimensions" class="grid"></div>
+<div id="snapshot" class="snapshot" style="display:none;"><h2>◈ Weekly Direction</h2><pre id="snapshot-text"></pre></div>
+
+<div class="input-section">
+  <h2>Log Entry</h2>
+  <div class="input-row">
+    <input type="text" id="entry-input" placeholder="e.g. Spent $450 on tires. Gym after work. Dinner with friends." />
+    <button id="log-btn" onclick="logEntry()">Log</button>
+  </div>
+  <div class="input-result" id="entry-result"></div>
+</div>
+
+<div id="empty" class="empty" style="display:none;">
+  <h2>No data yet</h2>
+  <p>Start by logging your first entry above.<br>Or connect your OpenClaw agent to log automatically.</p>
+</div>
+
+<footer>
+  <a href="/api/status">API Status</a>
+  <a href="/api/direction">API Direction</a>
+  <a href="https://github.com/CristianAndrei01/digital-mirror">GitHub</a>
+</footer>
+
+<script>
+const API = '/api';
+const ICONS = { finance: '💰', health: '🏃', career: '🚀', social: '🤝', family: '👨‍👩‍👧‍👦' };
+
+function setStatus(state, text) {
+  const dot = document.getElementById('status-dot');
+  const label = document.getElementById('status-text');
+  dot.className = 'dot ' + state;
+  label.textContent = text;
+}
+
+function showError(detail) {
+  const banner = document.getElementById('error-banner');
+  document.getElementById('error-detail').textContent = detail;
+  banner.style.display = 'block';
+  setStatus('error', 'offline');
+}
+
+function hideError() {
+  document.getElementById('error-banner').style.display = 'none';
+}
+
+async function load() {
+  setStatus('loading', 'loading…');
+  try {
+    const [statusRes, dirRes] = await Promise.all([
+      fetch(`${API}/status`),
+      fetch(`${API}/direction`)
+    ]);
+
+    if (!statusRes.ok || !dirRes.ok) {
+      throw new Error(`API returned ${statusRes.status}`);
+    }
+
+    const status = await statusRes.json();
+    const direction = await dirRes.json();
+
+    hideError();
+    setStatus('', 'v1.0.0');
+
+    renderMeta(status);
+
+    if (status.totalEntries === 0) {
+      document.getElementById('empty').style.display = 'block';
+      document.getElementById('dimensions').innerHTML = '';
+      document.getElementById('snapshot').style.display = 'none';
+      return;
+    }
+
+    document.getElementById('empty').style.display = 'none';
+    renderDimensions(direction.dimensions, status.calibration);
+
+    if (direction.formatted) {
+      document.getElementById('snapshot').style.display = 'block';
+      document.getElementById('snapshot-text').textContent = direction.formatted;
+    }
+  } catch (err) {
+    showError(err.message || 'Check that the Digital Mirror backend is running on port 3000.');
+    console.error('Load failed:', err);
+  }
+}
+
+function renderMeta(status) {
+  const dims = status.activeDimensions || [];
+  const calibratedCount = Object.values(status.calibration || {}).filter(Boolean).length;
+  const total = Object.keys(status.calibration || {}).length;
+
+  // Calculate days since calibration started
+  let calDays = '—';
+  if (status.calibrationStart) {
+    const days = Math.floor((Date.now() - new Date(status.calibrationStart)) / 86400000);
+    calDays = `${days}d`;
+  }
+
+  document.getElementById('meta').innerHTML = `
+    <div class="meta-card"><div class="meta-label">Total Entries</div><div class="meta-value">${status.totalEntries || 0}</div></div>
+    <div class="meta-card"><div class="meta-label">Active Dimensions</div><div class="meta-value">${dims.length}/5</div></div>
+    <div class="meta-card"><div class="meta-label">Calibrated</div><div class="meta-value">${calibratedCount}/${total}</div></div>
+    <div class="meta-card"><div class="meta-label">Running For</div><div class="meta-value">${calDays}</div></div>
+  `;
+}
+
+function renderDimensions(dims, calibration) {
+  if (!dims || dims.length === 0) return;
+  const grid = document.getElementById('dimensions');
+
+  grid.innerHTML = dims.map(d => {
+    const icon = ICONS[d.dimension] || '◈';
+    const dir = d.direction7d;
+    const isCalibrated = calibration && calibration[d.dimension];
+    const cls = dir === 'Up' ? 'up' : dir === 'Down' ? 'down' : dir === 'Stable' ? 'stable' : 'calibrating';
+    const arrow = dir === 'Up' ? '↑' : dir === 'Down' ? '↓' : dir === 'Stable' ? '→' : '◌';
+
+    // Calibration progress bar for uncalibrated dimensions
+    const daysNum = parseInt((d.daysWithData || '0/14').split('/')[0]);
+    const daysTotal = parseInt((d.daysWithData || '0/14').split('/')[1]) || 14;
+    const calibPct = Math.min(100, Math.round((daysNum / daysTotal) * 100));
+
+    const calibBar = !isCalibrated ? `
+      <div class="calib-bar"><div class="calib-bar-fill" style="width:${calibPct}%"></div></div>
+      <div class="calib-label">Calibrating — ${daysNum}/${daysTotal} days</div>
+    ` : '';
+
+    return `
+      <div class="card">
+        <div class="card-dim">
+          <span>${icon} ${d.dimension.charAt(0).toUpperCase() + d.dimension.slice(1)}</span>
+          <span class="confidence">${d.confidence} confidence</span>
+        </div>
+        <div class="card-dir ${cls}">${arrow} ${dir}</div>
+        <div class="card-stab">${d.stability} · ${d.daysWithData} days</div>
+        ${calibBar}
+      </div>
+    `;
+  }).join('');
+}
+
+async function logEntry() {
+  const input = document.getElementById('entry-input');
+  const result = document.getElementById('entry-result');
+  const btn = document.getElementById('log-btn');
+  const text = input.value.trim();
+
+  if (!text) { result.textContent = 'Type something first.'; return; }
+
+  btn.disabled = true;
+  result.textContent = 'Logging…';
+
+  try {
+    const res = await fetch(`${API}/entry`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    const data = await res.json();
+    result.textContent = data.message;
+    input.value = '';
+    setTimeout(load, 300);
+  } catch (err) {
+    result.textContent = 'Error — is the backend running?';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('entry-input').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') logEntry();
+});
+
+load();
+</script>
+</body>
+</html>

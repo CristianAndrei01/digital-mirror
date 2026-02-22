@@ -87,18 +87,22 @@ clawhub install digital-mirror
 ### v1 — Now
 - [x] 5-dimension scoring (Family auto-activates)
 - [x] 14-day baseline calibration
-- [x] Adaptive direction thresholds
+- [x] Adaptive direction thresholds (per-dimension, σ multiplier: 0.4)
 - [x] Categorical output (Up / Stable / Down)
+- [x] Life Stability Index (volatility per dimension)
+- [x] Consistency Score with confidence flagging
+- [x] Weekly Strategic Snapshot
 - [x] Agent REST API + dashboard
 - [x] Open source (MIT)
 
 ### v2 — Next
+- [ ] Expanded numeric view (slopes, σ values, volatility ratios on request)
 - [ ] Directional Deviation Score
-- [ ] Life Stability Index
-- [ ] Consistency Score
-- [ ] Weekly Strategic Snapshot
+- [ ] Context Mode (temporary baseline adjustment)
 - [ ] Monthly Reflection Snapshot
-- [ ] Context Mode
+- [ ] Healthy Variance Ceiling notifications
+- [ ] ClawHub listing
+- [ ] Currency conversion via exchange rate API
 
 ### v3 — Future
 - [ ] Cross-dimension correlation

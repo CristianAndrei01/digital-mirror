@@ -25,7 +25,10 @@ app.use(express.json());
 // API routes
 app.use('/api', createApi(db));
 
-// Dashboard
+// Dashboard — served explicitly to avoid confusion with landing page index.html
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard', 'dashboard.html'));
+});
 app.use('/dashboard', express.static(path.join(__dirname, 'dashboard')));
 
 // Root redirect

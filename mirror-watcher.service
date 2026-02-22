@@ -1,0 +1,30 @@
+[Unit]
+Description=Digital Mirror — Session Watcher
+Documentation=https://github.com/CristianAndrei01/digital-mirror
+After=network.target openclaw.service
+
+[Service]
+Type=simple
+User=openclaw
+Group=openclaw
+
+ExecStart=/usr/bin/node /opt/mirror-watcher/mirror-watcher.js
+
+# Config file: /opt/mirror-watcher/mirror-watcher.env
+# Copy mirror-watcher.env.example to mirror-watcher.env and fill in values
+EnvironmentFile=/opt/mirror-watcher/mirror-watcher.env
+
+Restart=always
+RestartSec=5
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mirror-watcher
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/mirror-watcher
+ReadOnlyPaths=/home/openclaw/.openclaw
+
+[Install]
+WantedBy=multi-user.target

@@ -97,12 +97,19 @@ The scoring engine is the heart of Digital Mirror. If you want to contribute her
 ## What We're Looking For
 
 ### v2 Priorities (help wanted)
+- Expanded numeric view (slopes, σ, volatility ratios — on request from user)
 - Directional Deviation Score implementation
-- Life Stability Index (volatility measurement)
-- Consistency Score (data density)
-- Weekly Strategic Snapshot
-- Context Mode (temporary baseline adjustment)
+- Context Mode (temporary baseline adjustment with neutral notifications)
+- Monthly Reflection Snapshot
+- Healthy Variance Ceiling notifications
 - Currency conversion via exchange rate API
+- Dashboard UI improvements (calibration progress, direction charts)
+
+### Already in v1 (not needed):
+- Life Stability Index — implemented in `src/scoring.js`
+- Consistency Score with confidence flagging — implemented
+- Weekly Strategic Snapshot — implemented
+- Adaptive thresholds per dimension — implemented (σ multiplier: 0.4)
 
 ### Always Welcome
 - Performance improvements
