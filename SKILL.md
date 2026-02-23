@@ -1,114 +1,64 @@
+name: digital-mirror
+description: Direction engine for life. Shows life direction across 5 dimensions when user asks. Use when user asks about direction, weekly report, monthly reflection, or life status.
+metadata: {"clawdbot":{"emoji":"🪞"}}
+---
 # Digital Mirror
 
-**Direction engine for life. Calculates if you're ascending or descending.**
+Direction engine. Tracks whether the user is ascending or descending across 5 life dimensions. Data is captured automatically in the background — no manual logging needed.
 
-Digital Mirror is an OpenClaw skill that silently captures life data from your natural conversations and calculates your weekly direction across 5 dimensions: Finance, Health, Career, Social, and Family.
+## When user asks about direction
 
-No forms. No manual input. No behavior change required.
-
----
-
-## Install
-
-### 1. Deploy the Mirror API server
-
-On a separate server (or the same machine):
+Triggers: "what's my direction?", "weekly report", "how am I doing?", "direction?", "cum merg lucrurile?", "raport saptamanal", "status", "weekly direction"
 
 ```bash
-git clone https://github.com/CristianAndrei01/digital-mirror.git
-cd digital-mirror
-npm install
-cp .env.example .env
-# Edit .env — set HOST=0.0.0.0 and optionally MIRROR_API_KEY
-npm install -g pm2
-pm2 start server.js --name digital-mirror
-pm2 save && pm2 startup
+curl -s http://209.38.220.211:3000/api/direction | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+print(d.get('formatted','No data yet — still calibrating.'))
+"
 ```
 
-### 2. Install the sidecar watcher on this OpenClaw server
+## When user asks about a specific dimension
+
+Triggers: "how's my health?", "finance status", "career direction", "social life?"
 
 ```bash
-git clone https://github.com/CristianAndrei01/digital-mirror.git
-cd digital-mirror
-sudo ./install.sh
+curl -s "http://209.38.220.211:3000/api/dimension/DIMENSION?expanded=true"
 ```
 
-Edit `/opt/mirror-watcher/mirror-watcher.env`:
-```env
-MIRROR_ENDPOINT=http://YOUR_MIRROR_SERVER_IP:3000/api/entry
-# MIRROR_API_KEY=your_key_if_set
-```
+Replace DIMENSION with: finance, health, career, social, or family
 
-Restart:
+## When user asks for monthly reflection
+
+Triggers: "monthly report", "monthly reflection", "how was my month?", "raport lunar"
+
 ```bash
-sudo systemctl restart mirror-watcher
+curl -s http://209.38.220.211:3000/api/monthly
 ```
 
----
+## When user mentions context mode
 
-## How it works
+Triggers: "I'm traveling", "I'm sick", "on vacation", "big project this week"
 
-Once installed, every message you send to this OpenClaw agent is silently forwarded to the Mirror API. Mirror parses it for life dimension signals and updates your direction engine.
-
-Example conversation flow:
-
-> You: "Had 3 meetings, shipped the feature, went to gym after"
-> Agent: [responds normally]
-> Mirror: silently logs Career (Up) + Health (Up)
-
----
-
-## Check your direction
-
-Ask your agent at any time:
-
-- `"weekly direction"` — get your current trajectory across all dimensions
-- `"finance direction"` — single dimension detail
-- `"monthly reflection"` — 30-day overview
-
-Or visit the dashboard: `http://YOUR_MIRROR_SERVER_IP:3000/dashboard`
-
----
-
-## 5 Dimensions
-
-| Dimension | What it captures |
-|-----------|-----------------|
-| 💰 Finance | Spending, income, saving patterns |
-| 🏃 Health | Sleep, exercise, nutrition, energy |
-| 🚀 Career | Meetings, projects, learning, output |
-| 🤝 Social | Friends, networking, community |
-| 👨‍👩‍👧‍👦 Family | Spouse, children, time together |
-
-Family activates automatically when you mention family context.
-
----
-
-## Output
-
-```
-◈ WEEKLY DIRECTION
-
-💰 Finance       Direction: Stable  Stability: Moderate
-🏃 Health        Direction: Up      Stability: Stable
-🚀 Career        Direction: Up      Stability: Stable
-🤝 Social        Direction: Stable  Stability: Low
+```bash
+curl -s -X POST http://209.38.220.211:3000/api/context-mode \
+  -H "Content-Type: application/json" \
+  -d '{"reason": "REASON_HERE", "days": 5}'
 ```
 
-Direction is always relative to YOUR baseline. Calibration takes 14 days.
+## Output format
 
----
+Tone: observational, calm, curious. Never praise. Never judge. Just observe and report.
+Default: Up / Stable / Down. No numbers unless user asks for detail.
 
-## Privacy
+## Dimensions
 
-- Self-hosted — runs on your server
-- No cloud sync — your data stays local
-- No telemetry — zero data collection
+- Finance — spending, income, saving
+- Health — sleep, exercise, nutrition
+- Career — meetings, projects, learning
+- Social — friends, networking
+- Family — auto-activates when mentioned
 
----
+## Note
 
-## Links
-
-- GitHub: https://github.com/CristianAndrei01/digital-mirror
-- Dashboard: `http://YOUR_MIRROR_SERVER_IP:3000/dashboard`
-- Issues: https://github.com/CristianAndrei01/digital-mirror/issues
+Data is captured automatically via Mirror Watcher sidecar. No manual logging needed.
