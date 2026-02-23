@@ -8,7 +8,7 @@
  * Based on Narrative Bible v3 specification.
  */
 
-const SIGMA_MULTIPLIER = parseFloat(process.env.SIGMA_MULTIPLIER || '0.75');
+const SIGMA_MULTIPLIER = parseFloat(process.env.SIGMA_MULTIPLIER || '0.4');
 const CALIBRATION_DAYS = parseInt(process.env.CALIBRATION_DAYS || '14');
 
 // --- MATH HELPERS ---
@@ -85,10 +85,23 @@ function calculateDirection(db, dimension) {
   const daily7 = db.getDailyScores(dimension, 7);
   const daily30 = db.getDailyScores(dimension, 30);
 
+  // Not enough data at all
   if (daily7.length < 2) {
     return {
       direction7d: 'Insufficient data',
       direction30d: 'Insufficient data',
+      slope7d: 0,
+      slope30d: 0,
+      calibrated: false
+    };
+  }
+
+  // Still calibrating — don't speculate on direction with sparse data
+  // Require: baseline exists OR at least 7 days of data before showing direction
+  if (!baseline && daily7.length < 7) {
+    return {
+      direction7d: 'Calibrating',
+      direction30d: 'Calibrating',
       slope7d: 0,
       slope30d: 0,
       calibrated: false
@@ -227,13 +240,14 @@ function getWeeklySnapshot(db, dimensions, expanded = false) {
   const reports = dimensions.map(d => getDimensionReport(db, d, expanded));
 
   // Find strongest and weakest
+  // Use copies to avoid in-place sort mutation
   const directionOrder = { 'Up': 2, 'Stable': 1, 'Down': 0, 'Insufficient data': -1, 'Calibrating': -1 };
   const scored = reports
     .filter(r => r.direction7d !== 'Insufficient data')
     .map(r => ({ ...r, score: directionOrder[r.direction7d] || 0 }));
 
-  const strongest = scored.sort((a, b) => b.score - a.score)[0] || null;
-  const weakest = scored.sort((a, b) => a.score - b.score)[0] || null;
+  const strongest = [...scored].sort((a, b) => b.score - a.score)[0] || null;
+  const weakest = [...scored].sort((a, b) => a.score - b.score)[0] || null;
 
   // Detect patterns
   const patterns = [];
