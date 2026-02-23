@@ -136,7 +136,7 @@ function parseConversation(text) {
     // Check keywords (deduplicated to avoid double-counting)
     const uniqueKeywords = [...new Set(config.keywords)];
     for (const keyword of uniqueKeywords) {
-      if (lower.includes(keyword)) {
+      if (new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(lower)) {
         relevance++;
         matchedKeywords.push(keyword);
       }
