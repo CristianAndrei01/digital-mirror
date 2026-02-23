@@ -1,16 +1,12 @@
 #!/usr/bin/env node
 /**
  * Digital Mirror — Session Watcher v1.1
- * 
+ *
  * Adapter-based architecture:
  *   Agent Framework → [Adapter] → Mirror Standard Message → Mirror API
- * 
- * Adapters translate framework-specific formats into Mirror's standard format.
- * Currently supported: openclaw, webhook
- * Future: langchain, crewai, autogen, mirror-agent
- * 
+ *
  * Install: /opt/mirror-watcher/
- * Config:  Environment variables or .env
+ * Config:  /opt/mirror-watcher/.env
  */
 
 const fs = require('fs');
@@ -19,10 +15,9 @@ const http = require('http');
 const https = require('https');
 
 // ─── Config ──────────────────────────────────────────────────
-const DEFAULT_ENDPOINT = 'http://209.38.220.211:3000/api/entry';
 const config = {
   adapter: process.env.MIRROR_ADAPTER || 'openclaw',
-  endpoint: process.env.MIRROR_ENDPOINT || DEFAULT_ENDPOINT,
+  endpoint: process.env.MIRROR_ENDPOINT,
   apiKey: process.env.MIRROR_API_KEY || '',
   pollInterval: parseInt(process.env.POLL_INTERVAL || '2000', 10),
   stateFile: process.env.STATE_FILE || '/opt/mirror-watcher/watcher-state.json',
@@ -34,25 +29,11 @@ const config = {
   }
 };
 
-if (!process.env.MIRROR_ENDPOINT) {
-  console.warn(`[WARN] MIRROR_ENDPOINT not set — using hardcoded fallback: ${DEFAULT_ENDPOINT}`);
-  console.warn(`[WARN] Set MIRROR_ENDPOINT in environment to suppress this warning.`);
+if (!config.endpoint) {
+  console.error('[ERROR] MIRROR_ENDPOINT is required. Set it in /opt/mirror-watcher/.env');
+  console.error('[ERROR] Example: MIRROR_ENDPOINT=http://YOUR_MIRROR_SERVER_IP:3000/api/entry');
+  process.exit(1);
 }
-
-// ─── Mirror Standard Message Format ─────────────────────────
-// Every adapter must produce this. Mirror API accepts this.
-//
-// {
-//   text: string,           — the raw user message
-//   timestamp: string,      — ISO 8601
-//   source: string,         — adapter name
-//   metadata?: {
-//     sessionId?: string,
-//     userId?: string,
-//     channel?: string,     — telegram, discord, whatsapp, cli
-//     agentResponse?: string
-//   }
-// }
 
 // ─── Logging ─────────────────────────────────────────────────
 const LOG = '◈ Mirror';
@@ -123,10 +104,8 @@ async function postToMirror(message) {
   throw lastErr;
 }
 
-
 // ═══════════════════════════════════════════════════════════════
 // ADAPTER: OpenClaw
-// Reads JSONL session files from disk
 // ═══════════════════════════════════════════════════════════════
 const openclawAdapter = {
   name: 'openclaw',
@@ -152,20 +131,13 @@ const openclawAdapter = {
     const tb = content.find(b => b.type === 'text');
     if (!tb?.text) return null;
     let text = tb.text;
-
-    // Extract sender metadata before stripping
     let meta = {};
     const mm = text.match(/```json\s*(\{[^}]*\})\s*```/s);
     if (mm) { try { meta = JSON.parse(mm[1]); } catch {} }
-
-    // Strip OpenClaw metadata wrapper
     text = text.replace(/^Conversation info \(untrusted metadata\):\s*```json\s*\{[^}]*\}\s*```\s*/s, '');
-
-    // Skip system/cron/commands
     if (text.startsWith('System:') || text.startsWith('A scheduled reminder')) return null;
     text = text.trim();
     if (!text || text.length < 3 || text.startsWith('/')) return null;
-
     return { text, meta };
   },
 
@@ -173,8 +145,6 @@ const openclawAdapter = {
     const messages = [];
     const sid = this._getActiveSessionId();
     if (!sid) return { messages, newState: {} };
-
-    // Session changed — jump to end (don't reprocess history)
     if (sid !== st.sessionId) {
       const sp = path.join(this.sessionsDir, `${sid}.jsonl`);
       try {
@@ -183,27 +153,21 @@ const openclawAdapter = {
         return { messages: [], newState: { sessionId: sid, byteOffset: size } };
       } catch { return { messages, newState: {} }; }
     }
-
-    // Read new bytes
     const sp = path.join(this.sessionsDir, `${sid}.jsonl`);
     let fileSize;
     try { fileSize = fs.statSync(sp).size; } catch { return { messages, newState: {} }; }
     if (fileSize <= st.byteOffset) return { messages, newState: {} };
-
     const fd = fs.openSync(sp, 'r');
     const buf = Buffer.alloc(fileSize - st.byteOffset);
     fs.readSync(fd, buf, 0, buf.length, st.byteOffset);
     fs.closeSync(fd);
-
     for (const line of buf.toString('utf8').split('\n')) {
       if (!line.trim()) continue;
       let obj;
       try { obj = JSON.parse(line); } catch { continue; }
       if (obj.type !== 'message' || obj.message?.role !== 'user') continue;
-
       const parsed = this._parseUserContent(obj.message.content);
       if (!parsed) continue;
-
       messages.push({
         text: parsed.text,
         timestamp: obj.timestamp,
@@ -211,15 +175,12 @@ const openclawAdapter = {
         metadata: { sessionId: sid.slice(0,8), userId: parsed.meta.sender || null, channel: 'telegram' }
       });
     }
-
     return { messages, newState: { sessionId: sid, byteOffset: fileSize } };
   }
 };
 
-
 // ═══════════════════════════════════════════════════════════════
-// ADAPTER: Webhook (V2)
-// HTTP server that receives POSTs from any agent framework
+// ADAPTER: Webhook
 // ═══════════════════════════════════════════════════════════════
 const webhookAdapter = {
   name: 'webhook',
@@ -229,7 +190,6 @@ const webhookAdapter = {
   init(cfg) {
     const port = parseInt(cfg.webhookPort || '3100', 10);
     this.server = http.createServer((req, res) => {
-      // POST /ingest — accept messages from any agent
       if (req.method === 'POST' && req.url === '/ingest') {
         let body = '';
         req.on('data', c => body += c);
@@ -255,12 +215,9 @@ const webhookAdapter = {
             res.end(JSON.stringify({ error: 'Invalid JSON' }));
           }
         });
-
-      // GET /health
       } else if (req.method === 'GET' && req.url === '/health') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'ok', adapter: 'webhook', queued: this.queue.length }));
-
       } else {
         res.writeHead(404);
         res.end('Not found');
@@ -276,14 +233,8 @@ const webhookAdapter = {
   }
 };
 
-
-// ─── Adapter Registry ────────────────────────────────────────
 const adapters = { openclaw: openclawAdapter, webhook: webhookAdapter };
 
-
-// ═══════════════════════════════════════════════════════════════
-// MAIN
-// ═══════════════════════════════════════════════════════════════
 async function main() {
   console.log('');
   console.log('  ◈ Digital Mirror — Session Watcher v1.1');
@@ -305,7 +256,6 @@ async function main() {
     try {
       const { messages, newState } = adapter.getNewMessages(state);
       Object.assign(state, newState);
-
       for (const msg of messages) {
         try {
           await postToMirror(msg);
@@ -317,18 +267,15 @@ async function main() {
           logErr('POST failed', e);
         }
       }
-
       if (messages.length > 0) saveState();
     } catch (e) { logErr('Tick error', e); }
   }
 
   await tick();
   const interval = setInterval(tick, config.pollInterval);
-
   const shutdown = (sig) => { log(`${sig} — bye`); clearInterval(interval); saveState(); process.exit(0); };
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
-
   log('Watching…');
 }
 
