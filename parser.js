@@ -152,7 +152,7 @@ function parseConversation(text) {
       if (lower.includes(neg)) sentiment--;
     }
 
-    if (relevance > 0) {
+    if (relevance >= 2 || (relevance === 1 && sentiment !== 0)) {
       detected[dimension] = { relevance, sentiment, matchedKeywords };
     }
   }
