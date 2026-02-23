@@ -56,29 +56,118 @@ Direction is always relative to **your own baseline**, calculated during a 14-da
 
 ## Install
 
+### 1. Backend (Mirror API)
+
 ```bash
-# Clone and start the backend
 git clone https://github.com/CristianAndrei01/digital-mirror.git
 cd digital-mirror
 npm install
-npm start
-
-# Install the OpenClaw skill
-clawhub install digital-mirror
+cp .env.example .env
 ```
+
+Edit `.env` to configure your server:
+
+```env
+PORT=3000
+HOST=0.0.0.0        # use 0.0.0.0 to accept external connections
+DB_PATH=./data/mirror.db
+BASE_CURRENCY=USD
+SIGMA_MULTIPLIER=0.4
+CALIBRATION_DAYS=14
+```
+
+Start the server:
+
+```bash
+# With pm2 (recommended for production)
+npm install -g pm2
+pm2 start server.js --name digital-mirror
+pm2 save
+pm2 startup
+
+# Or directly
+npm start
+```
+
+Dashboard: `http://YOUR_SERVER_IP:3000/dashboard`  
+Health check: `http://YOUR_SERVER_IP:3000/health`
+
+---
+
+### 2. Sidecar Watcher (OpenClaw integration)
+
+The sidecar watcher runs on the same server as your OpenClaw bot. It monitors OpenClaw session files and silently forwards user messages to the Mirror API.
+
+**Deploy on your OpenClaw bot server:**
+
+```bash
+mkdir -p /opt/mirror-watcher
+
+# Copy from this repo
+cp mirror-watcher.js /opt/mirror-watcher/
+cp mirror-watcher.env.example /opt/mirror-watcher/.env
+```
+
+Edit `/opt/mirror-watcher/.env`:
+
+```env
+MIRROR_ADAPTER=openclaw
+MIRROR_ENDPOINT=http://YOUR_MIRROR_SERVER_IP:3000/api/entry
+OPENCLAW_HOME=/home/openclaw/.openclaw
+POLL_INTERVAL=2000
+STATE_FILE=/opt/mirror-watcher/watcher-state.json
+```
+
+**Install as a systemd service:**
+
+```bash
+cp mirror-watcher.service /etc/systemd/system/mirror-watcher.service
+systemctl daemon-reload
+systemctl enable mirror-watcher
+systemctl start mirror-watcher
+```
+
+**Verify it's running:**
+
+```bash
+journalctl -u mirror-watcher -f
+```
+
+You should see:
+```
+◈ Digital Mirror — Session Watcher v1.1
+Adapter:   openclaw
+Endpoint:  http://YOUR_MIRROR_SERVER_IP:3000/api/entry
+Watching…
+```
+
+From this point, every message you send to your OpenClaw bot is automatically captured by Mirror.
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────┐
-│  OpenClaw Agent  │ ──→ │  Digital Mirror   │ ──→ │     You     │
-│  (any channel)   │     │  Direction Engine │     │  Dashboard  │
-└─────────────────┘     └──────────────────┘     │  Agent Chat │
-  Telegram, Discord,      Baseline, Scoring,      │  REST API   │
-  WhatsApp, Slack         Stability, Trends        └─────────────┘
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│  OpenClaw Agent  │     │  Mirror Watcher   │     │  Digital Mirror  │
+│  (any channel)   │ ──→ │  (sidecar)        │ ──→ │  Direction API   │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+  Telegram, Discord,       Polls session files      Baseline, Scoring,
+  WhatsApp, Slack          every 2 seconds          Dashboard, REST API
 ```
+
+---
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/entry` | Log a user message `{"text": "..."}` |
+| `GET` | `/api/direction` | Weekly direction across all dimensions |
+| `GET` | `/api/dimension/:name` | Single dimension detail (`?expanded=true`) |
+| `GET` | `/api/monthly` | Monthly reflection snapshot |
+| `GET` | `/api/dashboard` | Dashboard data |
+| `GET` | `/health` | Health check |
 
 ---
 
@@ -93,6 +182,7 @@ clawhub install digital-mirror
 - [x] Consistency Score with confidence flagging
 - [x] Weekly Strategic Snapshot
 - [x] Agent REST API + dashboard
+- [x] OpenClaw sidecar watcher
 - [x] Open source (MIT)
 
 ### v2 — Next
