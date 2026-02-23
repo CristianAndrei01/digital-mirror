@@ -4,263 +4,772 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Digital Mirror — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Newsreader:ital,wght@1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0a0a; --card: #111; --border: #1e1e1e;
-    --text: #ededed; --text2: #999; --text3: #555;
-    --green: #00d4aa; --red: #ff6b6b; --yellow: #ffd93d; --blue: #6bb5ff;
-    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --mono: 'Courier New', monospace;
+    --bg: #050505;
+    --bg-card: #0c0c0c;
+    --bg-hover: #141414;
+    --border: #1a1a1a;
+    --border-hover: #2a2a2a;
+    --text: #f0f0f0;
+    --text-2: #999;
+    --text-3: #555;
+    --accent: #00d4aa;
+    --accent-dim: rgba(0,212,170,0.08);
+    --accent-glow: rgba(0,212,170,0.12);
+    --red: #ff5f56;
+    --red-dim: rgba(255,95,86,0.08);
+    --yellow: #fbbf24;
+    --yellow-dim: rgba(251,191,36,0.08);
+    --font: 'Space Grotesk', -apple-system, sans-serif;
+    --serif: 'Newsreader', Georgia, serif;
+    --mono: 'JetBrains Mono', monospace;
   }
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: var(--bg); color: var(--text); font-family: var(--font); padding: 24px; max-width: 900px; margin: 0 auto; }
+  html { scroll-behavior: smooth; }
 
-  header { display: flex; justify-content: space-between; align-items: center; padding: 16px 0 32px; border-bottom: 1px solid var(--border); margin-bottom: 32px; }
-  .logo { font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-  .logo svg { width: 24px; height: 24px; }
-  .status { font-family: var(--mono); font-size: 0.72rem; color: var(--text3); display: flex; align-items: center; gap: 6px; }
-  .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    /* subtle noise texture like landing page */
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+  }
+
+  .shell {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 28px 80px;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 0;
+    margin-bottom: 40px;
+    position: sticky;
+    top: 0;
+    background: rgba(5,5,5,0.85);
+    backdrop-filter: blur(20px) saturate(1.2);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    z-index: 20;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .logo svg { width: 26px; height: 26px; }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--text-3);
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 5px 12px;
+  }
+
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
   .dot.error { background: var(--red); }
-  .dot.loading { background: var(--yellow); animation: pulse 1s infinite; }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .dot.loading { background: var(--yellow); animation: pulse 2.5s ease infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.15} }
 
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-bottom: 32px; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
-  .card-dim { font-size: 0.75rem; color: var(--text2); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
-  .card-dim .confidence { font-family: var(--mono); font-size: 0.62rem; color: var(--text3); }
-  .card-dir { font-size: 1.8rem; font-weight: 700; margin-bottom: 4px; }
-  .card-dir.up { color: var(--green); }
-  .card-dir.down { color: var(--red); }
-  .card-dir.stable { color: var(--text2); }
-  .card-dir.calibrating { color: var(--yellow); font-size: 1rem; padding-top: 6px; }
-  .card-stab { font-family: var(--mono); font-size: 0.72rem; color: var(--text3); }
-  .calib-bar { margin-top: 10px; height: 2px; background: var(--border); border-radius: 2px; overflow: hidden; }
-  .calib-bar-fill { height: 100%; background: var(--yellow); border-radius: 2px; transition: width 0.4s; }
-  .calib-label { font-family: var(--mono); font-size: 0.6rem; color: var(--yellow); margin-top: 4px; }
+  .btn-refresh {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--text-3);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .btn-refresh:hover { border-color: var(--border-hover); color: var(--text-2); }
 
-  .snapshot { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 32px; }
-  .snapshot h2 { font-size: 0.85rem; color: var(--text2); margin-bottom: 16px; }
-  .snapshot pre { font-family: var(--mono); font-size: 0.78rem; color: var(--text); line-height: 1.8; white-space: pre-wrap; }
+  /* ── Error Banner ── */
+  .error-banner {
+    background: var(--red-dim);
+    border: 1px solid rgba(255,95,86,0.15);
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 32px;
+    display: none;
+  }
+  .error-title { font-size: 0.82rem; font-weight: 600; color: var(--red); margin-bottom: 3px; }
+  .error-detail { font-family: var(--mono); font-size: 0.68rem; color: var(--text-3); }
 
-  .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 32px; }
-  .meta-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
-  .meta-label { font-size: 0.68rem; color: var(--text3); font-family: var(--mono); margin-bottom: 4px; }
-  .meta-value { font-size: 1.1rem; font-weight: 600; }
+  /* ── Stats ── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 44px;
+  }
+  @media (max-width: 580px) { .stats { grid-template-columns: repeat(2,1fr); } }
 
-  .input-section { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 32px; }
-  .input-section h2 { font-size: 0.85rem; color: var(--text2); margin-bottom: 12px; }
-  .input-row { display: flex; gap: 8px; }
-  .input-row input { flex: 1; padding: 10px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: var(--font); font-size: 0.85rem; outline: none; }
-  .input-row input:focus { border-color: var(--green); }
-  .input-row button { padding: 10px 20px; background: var(--green); color: var(--bg); border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.85rem; transition: opacity 0.15s; }
-  .input-row button:hover { opacity: 0.9; }
-  .input-row button:disabled { opacity: 0.4; cursor: not-allowed; }
-  .input-result { margin-top: 12px; font-family: var(--mono); font-size: 0.75rem; color: var(--text2); min-height: 20px; }
+  .stat {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .stat:hover { background: var(--bg-hover); border-color: var(--border-hover); }
 
-  .empty { text-align: center; padding: 60px 20px; color: var(--text3); }
-  .empty h2 { font-size: 1.1rem; color: var(--text2); margin-bottom: 8px; }
-  .empty p { font-size: 0.85rem; line-height: 1.6; }
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
 
-  .error-banner { background: #1a0a0a; border: 1px solid #3a1a1a; border-radius: 12px; padding: 20px 24px; margin-bottom: 32px; display: none; }
-  .error-banner h2 { font-size: 0.85rem; color: var(--red); margin-bottom: 6px; }
-  .error-banner p { font-size: 0.78rem; color: var(--text3); font-family: var(--mono); }
+  .stat-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    color: var(--text);
+  }
 
-  footer { text-align: center; padding: 32px 0; border-top: 1px solid var(--border); }
-  footer a { font-family: var(--mono); font-size: 0.68rem; color: var(--text3); margin: 0 12px; text-decoration: none; }
-  footer a:hover { color: var(--green); }
+  .stat-value em {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 1.6rem;
+    color: var(--accent);
+  }
+
+  .stat-sub {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    color: var(--text-3);
+    margin-top: 6px;
+  }
+
+  /* ── Section Label ── */
+  .stag {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  /* ── Dimension Grid ── */
+  .dim-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 44px;
+  }
+  @media (max-width: 640px) { .dim-grid { grid-template-columns: repeat(2,1fr); } }
+  @media (max-width: 400px) { .dim-grid { grid-template-columns: 1fr; } }
+
+  .dim-card {
+    background: var(--bg-card);
+    padding: 22px;
+    transition: background 0.2s;
+    animation: fadeUp 0.4s ease both;
+    position: relative;
+    overflow: hidden;
+  }
+  .dim-card:hover { background: var(--bg-hover); }
+
+  /* accent line top */
+  .dim-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+  }
+  .dim-card.up::before { background: var(--accent); }
+  .dim-card.down::before { background: var(--red); }
+  .dim-card.stable::before { background: var(--border-hover); }
+  .dim-card.calibrating::before { background: var(--yellow); }
+
+  @keyframes fadeUp {
+    from { opacity:0; transform: translateY(6px); }
+    to { opacity:1; transform: translateY(0); }
+  }
+
+  .dim-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+  }
+
+  .dim-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text-2);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .dim-conf {
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    color: var(--text-3);
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+
+  .dim-dir {
+    font-size: 1.9rem;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    margin-bottom: 5px;
+  }
+  .dim-dir.up { color: var(--accent); }
+  .dim-dir.down { color: var(--red); }
+  .dim-dir.stable { color: var(--text-2); }
+  .dim-dir.calibrating {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 1rem;
+    color: var(--yellow);
+    padding-top: 4px;
+  }
+
+  .dim-stab {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-3);
+  }
+
+  .calib-track {
+    height: 1px;
+    background: rgba(255,255,255,0.05);
+    margin-top: 12px;
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  .calib-fill {
+    height: 100%;
+    background: var(--yellow);
+    border-radius: 1px;
+    opacity: 0.5;
+    transition: width 0.6s ease;
+  }
+  .calib-days {
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    color: var(--yellow);
+    opacity: 0.6;
+    margin-top: 5px;
+  }
+
+  /* ── Weekly Direction Table ── */
+  .weekly-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 44px;
+  }
+
+  .weekly-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .weekly-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text-2);
+  }
+
+  .weekly-ts {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    color: var(--text-3);
+  }
+
+  .dir-row {
+    display: grid;
+    grid-template-columns: 160px 110px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 20px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.12s;
+  }
+  .dir-row:last-child { border-bottom: none; }
+  .dir-row:hover { background: var(--bg-hover); }
+
+  .dir-dim {
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dir-badge {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 6px;
+    letter-spacing: 0.01em;
+  }
+  .dir-badge.up { background: var(--accent-dim); color: var(--accent); }
+  .dir-badge.down { background: var(--red-dim); color: var(--red); }
+  .dir-badge.stable { background: rgba(255,255,255,0.03); color: var(--text-3); }
+  .dir-badge.calibrating { background: var(--yellow-dim); color: var(--yellow); }
+
+  .dir-stab {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-3);
+  }
+
+  .dir-days {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-3);
+    text-align: right;
+  }
+
+  .weekly-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    background: rgba(255,255,255,0.01);
+    display: flex;
+    gap: 28px;
+    flex-wrap: wrap;
+  }
+
+  .w-insight {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-3);
+  }
+  .w-insight b { color: var(--text-2); font-weight: 500; }
+
+  /* ── Log Entry ── */
+  .log-wrap {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 44px;
+    transition: border-color 0.2s;
+  }
+  .log-wrap:focus-within { border-color: rgba(0,212,170,0.3); }
+
+  .log-input {
+    width: 100%;
+    padding: 16px 20px;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.9rem;
+    outline: none;
+    letter-spacing: -0.01em;
+  }
+  .log-input::placeholder { color: var(--text-3); }
+
+  .log-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+    background: rgba(255,255,255,0.01);
+  }
+
+  .log-result {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--text-3);
+    min-height: 16px;
+  }
+  .log-result.ok { color: var(--accent); }
+  .log-result.err { color: var(--red); }
+
+  .log-btn {
+    padding: 7px 18px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: -0.01em;
+  }
+  .log-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(0,212,170,0.15); }
+  .log-btn:active { transform: translateY(0); }
+  .log-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* ── Empty State ── */
+  .empty {
+    text-align: center;
+    padding: 80px 20px;
+    display: none;
+  }
+  .empty-glyph { font-size: 2.8rem; margin-bottom: 18px; opacity: 0.15; }
+  .empty-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--text-2);
+    margin-bottom: 8px;
+  }
+  .empty-sub {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--text-3);
+    line-height: 1.9;
+  }
+
+  /* ── Footer ── */
+  footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 28px;
+    border-top: 1px solid var(--border);
+  }
+  .footer-brand {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .footer-brand svg { width: 16px; height: 16px; opacity: 0.4; }
+  .footer-links { display: flex; gap: 20px; }
+  footer a {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-3);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  footer a:hover { color: var(--text-2); }
 </style>
 </head>
 <body>
+<div class="shell">
 
-<header>
-  <div class="logo">
-    <svg viewBox="0 0 80 80" fill="none"><defs><linearGradient id="lg" x1="0" y1="0" x2="80" y2="80"><stop offset="0%" stop-color="#00d4aa"/><stop offset="100%" stop-color="#00a080"/></linearGradient></defs><path d="M40 8 L58 28 L40 48 L22 28 Z" fill="url(#lg)" opacity="0.9"/><path d="M40 32 L58 52 L40 72 L22 52 Z" fill="url(#lg)" opacity="0.35"/></svg>
-    Digital Mirror
+  <header>
+    <a href="https://thedigitalmirror.ai" class="logo" target="_blank">
+      <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="lg" x1="0" y1="0" x2="80" y2="80">
+            <stop offset="0%" stop-color="#00d4aa"/>
+            <stop offset="100%" stop-color="#00a080"/>
+          </linearGradient>
+        </defs>
+        <path d="M40 8 L58 28 L40 48 L22 28 Z" fill="url(#lg)" opacity="0.9"/>
+        <path d="M40 32 L58 52 L40 72 L22 52 Z" fill="url(#lg)" opacity="0.35"/>
+        <line x1="16" y1="40" x2="64" y2="40" stroke="#00d4aa" stroke-width="1" opacity="0.4"/>
+      </svg>
+      Digital Mirror
+    </a>
+    <div class="header-right">
+      <button class="btn-refresh" onclick="load()">↻ refresh</button>
+      <div class="status-pill">
+        <span class="dot loading" id="status-dot"></span>
+        <span id="status-text" style="font-family:var(--mono)">connecting</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="error-banner" id="error-banner">
+    <div class="error-title">Cannot reach backend</div>
+    <div class="error-detail" id="error-detail">Check that Digital Mirror is running on port 3000.</div>
   </div>
-  <div class="status" id="status-indicator">
-    <span class="dot loading" id="status-dot"></span>
-    <span id="status-text">connecting…</span>
+
+  <div class="stats" id="stats"></div>
+
+  <div id="main-content" style="display:none">
+
+    <div class="stag">Dimensions</div>
+    <div class="dim-grid" id="dim-grid"></div>
+
+    <div class="stag">Weekly Direction</div>
+    <div class="weekly-card">
+      <div class="weekly-head">
+        <div class="weekly-title">7-day snapshot</div>
+        <div class="weekly-ts" id="weekly-ts">—</div>
+      </div>
+      <div id="dir-table"></div>
+      <div class="weekly-footer" id="weekly-footer" style="display:none"></div>
+    </div>
+
   </div>
-</header>
 
-<div class="error-banner" id="error-banner">
-  <h2>◈ API Unreachable</h2>
-  <p id="error-detail">Could not connect to Digital Mirror backend.</p>
-</div>
-
-<div id="meta" class="meta"></div>
-<div id="dimensions" class="grid"></div>
-<div id="snapshot" class="snapshot" style="display:none;"><h2>◈ Weekly Direction</h2><pre id="snapshot-text"></pre></div>
-
-<div class="input-section">
-  <h2>Log Entry</h2>
-  <div class="input-row">
-    <input type="text" id="entry-input" placeholder="e.g. Spent $450 on tires. Gym after work. Dinner with friends." />
-    <button id="log-btn" onclick="logEntry()">Log</button>
+  <div class="empty" id="empty">
+    <div class="empty-glyph">🪞</div>
+    <div class="empty-title">No data yet</div>
+    <div class="empty-sub">Log your first entry below — or connect your OpenClaw agent.<br>Direction calibrates after 14 days of entries.</div>
   </div>
-  <div class="input-result" id="entry-result"></div>
+
+  <div class="stag">Log Entry</div>
+  <div class="log-wrap">
+    <input
+      type="text"
+      class="log-input"
+      id="entry-input"
+      placeholder="e.g. Spent $450 on tires. 3 meetings. Gym after work. Dinner with family."
+    />
+    <div class="log-footer">
+      <div class="log-result" id="entry-result"></div>
+      <button class="log-btn" id="log-btn" onclick="logEntry()">Log</button>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-brand">
+      <svg viewBox="0 0 80 80" fill="none">
+        <defs>
+          <linearGradient id="lg2" x1="0" y1="0" x2="80" y2="80">
+            <stop offset="0%" stop-color="#00d4aa"/>
+            <stop offset="100%" stop-color="#00a080"/>
+          </linearGradient>
+        </defs>
+        <path d="M40 8 L58 28 L40 48 L22 28 Z" fill="url(#lg2)" opacity="0.9"/>
+        <path d="M40 32 L58 52 L40 72 L22 52 Z" fill="url(#lg2)" opacity="0.35"/>
+      </svg>
+      Digital Mirror · v1.0.0
+    </div>
+    <div class="footer-links">
+      <a href="/api/status">status</a>
+      <a href="/api/direction">api</a>
+      <a href="https://github.com/CristianAndrei01/digital-mirror" target="_blank">github</a>
+      <a href="https://thedigitalmirror.ai" target="_blank">site</a>
+    </div>
+  </footer>
+
 </div>
-
-<div id="empty" class="empty" style="display:none;">
-  <h2>No data yet</h2>
-  <p>Start by logging your first entry above.<br>Or connect your OpenClaw agent to log automatically.</p>
-</div>
-
-<footer>
-  <a href="/api/status">API Status</a>
-  <a href="/api/direction">API Direction</a>
-  <a href="https://github.com/CristianAndrei01/digital-mirror">GitHub</a>
-</footer>
-
 <script>
 const API = '/api';
-const ICONS = { finance: '💰', health: '🏃', career: '🚀', social: '🤝', family: '👨‍👩‍👧‍👦' };
+const ICONS = { finance:'💰', health:'🏃', career:'🚀', social:'🤝', family:'👨‍👩‍👧‍👦' };
+const $ = id => document.getElementById(id);
 
-function setStatus(state, text) {
-  const dot = document.getElementById('status-dot');
-  const label = document.getElementById('status-text');
-  dot.className = 'dot ' + state;
-  label.textContent = text;
+function setStatus(cls, text) {
+  $('status-dot').className = 'dot ' + cls;
+  $('status-text').textContent = text;
 }
 
-function showError(detail) {
-  const banner = document.getElementById('error-banner');
-  document.getElementById('error-detail').textContent = detail;
-  banner.style.display = 'block';
-  setStatus('error', 'offline');
+function cls(dir) {
+  if (!dir) return 'calibrating';
+  const d = dir.toLowerCase();
+  return d==='up'?'up': d==='down'?'down': d==='stable'?'stable':'calibrating';
 }
 
-function hideError() {
-  document.getElementById('error-banner').style.display = 'none';
+function arrow(dir) {
+  if (!dir) return '';
+  const d = dir.toLowerCase();
+  return d==='up'?'↑ ': d==='down'?'↓ ': d==='stable'?'→ ':'';
 }
 
 async function load() {
-  setStatus('loading', 'loading…');
+  setStatus('loading','loading');
   try {
-    const [statusRes, dirRes] = await Promise.all([
-      fetch(`${API}/status`),
-      fetch(`${API}/direction`)
-    ]);
+    const [sRes, dRes] = await Promise.all([fetch(`${API}/status`), fetch(`${API}/direction`)]);
+    if (!sRes.ok) throw new Error(`API ${sRes.status}`);
+    const [status, dir] = await Promise.all([sRes.json(), dRes.json()]);
 
-    if (!statusRes.ok || !dirRes.ok) {
-      throw new Error(`API returned ${statusRes.status}`);
-    }
-
-    const status = await statusRes.json();
-    const direction = await dirRes.json();
-
-    hideError();
+    $('error-banner').style.display = 'none';
     setStatus('', 'v1.0.0');
 
-    renderMeta(status);
+    renderStats(status);
 
-    if (status.totalEntries === 0) {
-      document.getElementById('empty').style.display = 'block';
-      document.getElementById('dimensions').innerHTML = '';
-      document.getElementById('snapshot').style.display = 'none';
+    if (!status.totalEntries) {
+      $('empty').style.display = 'block';
+      $('main-content').style.display = 'none';
       return;
     }
-
-    document.getElementById('empty').style.display = 'none';
-    renderDimensions(direction.dimensions, status.calibration);
-
-    if (direction.formatted) {
-      document.getElementById('snapshot').style.display = 'block';
-      document.getElementById('snapshot-text').textContent = direction.formatted;
-    }
-  } catch (err) {
-    showError(err.message || 'Check that the Digital Mirror backend is running on port 3000.');
-    console.error('Load failed:', err);
+    $('empty').style.display = 'none';
+    $('main-content').style.display = 'block';
+    renderDims(dir.dimensions, status.calibration);
+    renderWeekly(dir);
+  } catch(e) {
+    $('error-banner').style.display = 'block';
+    $('error-detail').textContent = e.message || 'Check the backend is running on port 3000.';
+    setStatus('error','offline');
   }
 }
 
-function renderMeta(status) {
-  const dims = status.activeDimensions || [];
-  const calibratedCount = Object.values(status.calibration || {}).filter(Boolean).length;
-  const total = Object.keys(status.calibration || {}).length;
-
-  // Calculate days since calibration started
-  let calDays = '—';
-  if (status.calibrationStart) {
-    const days = Math.floor((Date.now() - new Date(status.calibrationStart)) / 86400000);
-    calDays = `${days}d`;
+function renderStats(s) {
+  const dims = s.activeDimensions || [];
+  const cal = s.calibration || {};
+  const calN = Object.values(cal).filter(Boolean).length;
+  const calT = Object.keys(cal).length || 5;
+  let days = '—';
+  if (s.calibrationStart) {
+    days = Math.floor((Date.now() - new Date(s.calibrationStart)) / 86400000) + 'd';
   }
-
-  document.getElementById('meta').innerHTML = `
-    <div class="meta-card"><div class="meta-label">Total Entries</div><div class="meta-value">${status.totalEntries || 0}</div></div>
-    <div class="meta-card"><div class="meta-label">Active Dimensions</div><div class="meta-value">${dims.length}/5</div></div>
-    <div class="meta-card"><div class="meta-label">Calibrated</div><div class="meta-value">${calibratedCount}/${total}</div></div>
-    <div class="meta-card"><div class="meta-label">Running For</div><div class="meta-value">${calDays}</div></div>
+  $('stats').innerHTML = `
+    <div class="stat">
+      <div class="stat-label">Entries</div>
+      <div class="stat-value">${s.totalEntries || 0}</div>
+      <div class="stat-sub">total logged</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Dimensions</div>
+      <div class="stat-value">${dims.length}<span style="font-size:1rem;color:var(--text-3);font-weight:400">/5</span></div>
+      <div class="stat-sub">active</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Calibrated</div>
+      <div class="stat-value">${calN}<span style="font-size:1rem;color:var(--text-3);font-weight:400">/${calT}</span></div>
+      <div class="stat-sub">dimensions complete</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Running</div>
+      <div class="stat-value">${days}</div>
+      <div class="stat-sub">since start</div>
+    </div>
   `;
 }
 
-function renderDimensions(dims, calibration) {
-  if (!dims || dims.length === 0) return;
-  const grid = document.getElementById('dimensions');
-
-  grid.innerHTML = dims.map(d => {
+function renderDims(dims, calibration) {
+  if (!dims?.length) return;
+  $('dim-grid').innerHTML = dims.map((d, i) => {
+    const c = cls(d.direction7d);
+    const name = d.dimension.charAt(0).toUpperCase() + d.dimension.slice(1);
     const icon = ICONS[d.dimension] || '◈';
-    const dir = d.direction7d;
-    const isCalibrated = calibration && calibration[d.dimension];
-    const cls = dir === 'Up' ? 'up' : dir === 'Down' ? 'down' : dir === 'Stable' ? 'stable' : 'calibrating';
-    const arrow = dir === 'Up' ? '↑' : dir === 'Down' ? '↓' : dir === 'Stable' ? '→' : '◌';
-
-    // Calibration progress bar for uncalibrated dimensions
-    const daysNum = parseInt((d.daysWithData || '0/14').split('/')[0]);
-    const daysTotal = parseInt((d.daysWithData || '0/14').split('/')[1]) || 14;
-    const calibPct = Math.min(100, Math.round((daysNum / daysTotal) * 100));
-
-    const calibBar = !isCalibrated ? `
-      <div class="calib-bar"><div class="calib-bar-fill" style="width:${calibPct}%"></div></div>
-      <div class="calib-label">Calibrating — ${daysNum}/${daysTotal} days</div>
-    ` : '';
+    const isCalib = calibration?.[d.dimension];
+    const [dN, dT] = (d.daysWithData||'0/14').split('/').map(Number);
+    const pct = Math.min(100, Math.round((dN/(dT||14))*100));
 
     return `
-      <div class="card">
-        <div class="card-dim">
-          <span>${icon} ${d.dimension.charAt(0).toUpperCase() + d.dimension.slice(1)}</span>
-          <span class="confidence">${d.confidence} confidence</span>
+      <div class="dim-card ${c}" style="animation-delay:${i*0.06}s">
+        <div class="dim-top">
+          <div class="dim-name">${icon} ${name}</div>
+          <div class="dim-conf">${d.confidence}</div>
         </div>
-        <div class="card-dir ${cls}">${arrow} ${dir}</div>
-        <div class="card-stab">${d.stability} · ${d.daysWithData} days</div>
-        ${calibBar}
+        <div class="dim-dir ${c}">${arrow(d.direction7d)}${d.direction7d || 'Calibrating'}</div>
+        <div class="dim-stab">${d.stability || '—'}</div>
+        ${!isCalib ? `
+          <div class="calib-track"><div class="calib-fill" style="width:${pct}%"></div></div>
+          <div class="calib-days">${dN}/${dT||14} days</div>
+        ` : ''}
       </div>
     `;
   }).join('');
 }
 
-async function logEntry() {
-  const input = document.getElementById('entry-input');
-  const result = document.getElementById('entry-result');
-  const btn = document.getElementById('log-btn');
-  const text = input.value.trim();
+function renderWeekly(dir) {
+  const dims = dir.dimensions || [];
+  $('weekly-ts').textContent = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
 
-  if (!text) { result.textContent = 'Type something first.'; return; }
+  $('dir-table').innerHTML = dims.map(d => {
+    const c = cls(d.direction7d);
+    const name = d.dimension.charAt(0).toUpperCase() + d.dimension.slice(1);
+    return `
+      <div class="dir-row">
+        <div class="dir-dim">${ICONS[d.dimension]||'◈'} ${name}</div>
+        <div><span class="dir-badge ${c}">${d.direction7d||'Calibrating'}</span></div>
+        <div class="dir-stab">${d.stability||'—'}</div>
+        <div class="dir-days">${d.daysWithData||'—'}</div>
+      </div>
+    `;
+  }).join('');
+
+  const insights = [];
+  if (dir.strongest) insights.push(`<div class="w-insight">Strongest: <b>${ICONS[dir.strongest.dimension]||''} ${dir.strongest.dimension}</b></div>`);
+  if (dir.weakest) insights.push(`<div class="w-insight">Weakest: <b>${ICONS[dir.weakest.dimension]||''} ${dir.weakest.dimension}</b></div>`);
+  if (dir.pattern) insights.push(`<div class="w-insight">Pattern: <b>${dir.pattern}</b></div>`);
+
+  if (insights.length) {
+    $('weekly-footer').style.display = 'flex';
+    $('weekly-footer').innerHTML = insights.join('');
+  }
+}
+
+async function logEntry() {
+  const input = $('entry-input');
+  const result = $('entry-result');
+  const btn = $('log-btn');
+  const text = input.value.trim();
+  if (!text) { result.textContent='Type something first.'; result.className='log-result err'; return; }
 
   btn.disabled = true;
   result.textContent = 'Logging…';
+  result.className = 'log-result';
 
   try {
     const res = await fetch(`${API}/entry`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text })
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({text})
     });
     const data = await res.json();
     result.textContent = data.message;
+    result.className = data.logged > 0 ? 'log-result ok' : 'log-result';
     input.value = '';
-    setTimeout(load, 300);
-  } catch (err) {
+    setTimeout(load, 500);
+  } catch {
     result.textContent = 'Error — is the backend running?';
+    result.className = 'log-result err';
   } finally {
     btn.disabled = false;
   }
 }
 
-document.getElementById('entry-input').addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') logEntry();
-});
-
+$('entry-input').addEventListener('keypress', e => { if(e.key==='Enter') logEntry(); });
+setInterval(load, 60000);
 load();
 </script>
 </body>
