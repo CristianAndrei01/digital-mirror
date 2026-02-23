@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Check for hardcoded IPs or secrets
+        run: |
+          if grep -rn "209\.38\." --include="*.js" .; then
+            echo "ERROR: Hardcoded IP found in source files"
+            exit 1
+          fi
+          echo "✓ No hardcoded IPs found"
+
+      - name: Verify required files exist
+        run: |
+          files=("server.js" "parser.js" "scoring.js" "api.js" "mirror-watcher.js" ".env.example" "mirror-watcher.env.example" "SKILL.md")
+          for f in "${files[@]}"; do
+            if [ ! -f "$f" ]; then
+              echo "ERROR: Missing required file: $f"
+              exit 1
+            fi
+            echo "✓ $f"
+          done
+
+      - name: Start server and smoke test
+        run: |
+          cp .env.example .env
+          echo "HOST=0.0.0.0" >> .env
+          node server.js &
+          SERVER_PID=$!
+          sleep 3
+
+          # Health check
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/health)
+          if [ "$STATUS" != "200" ]; then
+            echo "ERROR: Health check failed with status $STATUS"
+            kill $SERVER_PID
+            exit 1
+          fi
+          echo "✓ Health check passed"
+
+          # API status
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/status)
+          if [ "$STATUS" != "200" ]; then
+            echo "ERROR: API status failed with status $STATUS"
+            kill $SERVER_PID
+            exit 1
+          fi
+          echo "✓ API status passed"
+
+          # POST entry
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:3000/api/entry \
+            -H "Content-Type: application/json" \
+            -d '{"text": "went to gym today, great workout"}')
+          if [ "$STATUS" != "200" ]; then
+            echo "ERROR: POST entry failed with status $STATUS"
+            kill $SERVER_PID
+            exit 1
+          fi
+          echo "✓ POST entry passed"
+
+          # Test that generic text is rejected
+          BODY=$(curl -s -X POST http://localhost:3000/api/entry \
+            -H "Content-Type: application/json" \
+            -d '{"text": "hello how are you"}')
+          if echo "$BODY" | grep -q '"logged":0'; then
+            echo "✓ Generic text correctly ignored"
+          else
+            echo "ERROR: Generic text was incorrectly logged"
+            kill $SERVER_PID
+            exit 1
+          fi
+
+          kill $SERVER_PID
+          echo ""
+          echo "✓ All smoke tests passed"
