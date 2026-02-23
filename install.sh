@@ -5,6 +5,12 @@
 set -e
 
 echo ""
+echo -e "\e[31m  You don't need a coach. You need a mirror.\e[0m"
+echo -e "\e[31m  Digital Mirror watches your life through conversation\e[0m"
+echo -e "\e[31m  and tells you one thing: are you going up or down?\e[0m"
+echo -e "\e[31m  No motivation. No streaks. No bullshit.\e[0m"
+echo -e "\e[31m  Just your direction — calculated from how you actually live.\e[0m"
+echo ""
 echo "  ◈ Installing Digital Mirror Session Watcher"
 echo ""
 
@@ -79,7 +85,7 @@ sed "s/User=openclaw/User=$WATCHER_USER/; s/Group=openclaw/Group=$WATCHER_GROUP/
 systemctl daemon-reload
 systemctl enable mirror-watcher
 
-# Only start if config has been edited (MIRROR_ENDPOINT is set)
+# Only start if config has been edited
 if grep -q "YOUR_MIRROR_SERVER_IP" /opt/mirror-watcher/mirror-watcher.env; then
   echo ""
   echo "  ⚠ MIRROR_ENDPOINT not configured yet."
