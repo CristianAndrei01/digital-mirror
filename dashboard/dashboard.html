@@ -118,6 +118,21 @@
   }
   .btn-refresh:hover { border-color: var(--border-hover); color: var(--text-2); }
 
+  .btn-export {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-dim);
+    border: 1px solid rgba(0,212,170,0.2);
+    border-radius: 7px;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.01em;
+  }
+  .btn-export:hover { background: rgba(0,212,170,0.12); border-color: rgba(0,212,170,0.35); }
+
   /* ── Error Banner ── */
   .error-banner {
     background: var(--red-dim);
@@ -394,10 +409,10 @@
 
   .w-insight {
     font-family: var(--mono);
-    font-size: 0.65rem;
+    font-size: 0.78rem;
     color: var(--text-3);
   }
-  .w-insight b { color: var(--text-2); font-weight: 500; }
+  .w-insight b { color: var(--text); font-weight: 600; }
 
   /* ── Log Entry ── */
   .log-wrap {
@@ -693,17 +708,17 @@
   }
   .footer-brand {
     font-family: var(--mono);
-    font-size: 0.65rem;
-    color: var(--text-3);
+    font-size: 0.78rem;
+    color: var(--text-2);
     display: flex;
     align-items: center;
     gap: 8px;
   }
-  .footer-brand svg { width: 16px; height: 16px; opacity: 0.4; }
-  .footer-links { display: flex; gap: 20px; }
+  .footer-brand svg { width: 16px; height: 16px; opacity: 0.5; }
+  .footer-links { display: flex; gap: 24px; }
   footer a {
     font-family: var(--mono);
-    font-size: 0.65rem;
+    font-size: 0.78rem;
     color: var(--text-3);
     text-decoration: none;
     transition: color 0.2s;
@@ -730,6 +745,7 @@
       Digital Mirror
     </a>
     <div class="header-right">
+      <button class="btn-export" onclick="exportData(event)">↓ Export</button>
       <button class="btn-refresh" onclick="load()">↻ refresh</button>
       <div class="status-pill">
         <span class="dot loading" id="status-dot"></span>
@@ -839,10 +855,6 @@
         <div class="settings-result" id="settings-result"></div>
         <button class="settings-btn" onclick="saveSettings()">Save</button>
       </div>
-      <div style="margin-top:12px; font-family:var(--mono); font-size:0.62rem; color:var(--text-3); line-height:1.7;">
-        Timezone + digest schedule apply to push notifications via Mirror Watcher.<br>
-        Agent Language sets the language your AI agent uses when surfacing Mirror insights.
-      </div>
     </div>
   </div>
 
@@ -865,7 +877,6 @@
       <a href="/api/direction">api</a>
       <a href="https://github.com/CristianAndrei01/digital-mirror" target="_blank">github</a>
       <a href="https://thedigitalmirror.ai" target="_blank">site</a>
-      <a href="#" onclick="exportData(event)" style="color:var(--accent)">↓ export</a>
     </div>
   </footer>
 
