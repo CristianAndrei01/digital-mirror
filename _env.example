@@ -1,0 +1,29 @@
+# Digital Mirror — Server Configuration
+# Copy this file to .env and fill in your values
+
+# ── Server ───────────────────────────────────────────────────
+PORT=3000
+HOST=localhost
+
+# ── Database (SQLite — relative to project root) ─────────────
+DB_PATH=./data/mirror.db
+
+# ── Base currency (ISO 4217) ─────────────────────────────────
+BASE_CURRENCY=USD
+
+# ── Scoring ──────────────────────────────────────────────────
+# Adaptive threshold multiplier (default: 0.4)
+# Lower = more sensitive (fewer Stable). Higher = more conservative.
+SIGMA_MULTIPLIER=0.4
+
+# Calibration period in days (default: 14)
+CALIBRATION_DAYS=14
+
+# Days of consecutive movement before proactive alert (default: 3)
+ALERT_STREAK_DAYS=3
+
+# ── API key (optional — protects /api/* endpoints) ───────────
+# MIRROR_API_KEY=your_secret_key_here
+
+# ── Dashboard password (optional) ────────────────────────────
+# DASHBOARD_PASSWORD=your_dashboard_password

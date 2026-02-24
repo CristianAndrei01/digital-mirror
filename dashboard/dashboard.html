@@ -193,40 +193,26 @@
   /* ── Dimension Grid ── */
   .dim-grid {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 8px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
     margin-bottom: 44px;
   }
-
-  /* 5 cards: center the last 2 on bottom row */
-  .dim-card:nth-child(4):nth-last-child(2) { grid-column: 2 / 4; }
-  .dim-card:nth-child(5):last-child        { grid-column: 4 / 6; }
-
-  @media (max-width: 640px) {
-    .dim-grid { grid-template-columns: repeat(2, 1fr); }
-    .dim-card,
-    .dim-card:nth-child(4):nth-last-child(2),
-    .dim-card:nth-child(5):last-child { grid-column: span 1; }
-  }
-  @media (max-width: 400px) {
-    .dim-grid { grid-template-columns: 1fr; }
-    .dim-card,
-    .dim-card:nth-child(4):nth-last-child(2),
-    .dim-card:nth-child(5):last-child { grid-column: span 1; }
-  }
+  @media (max-width: 640px) { .dim-grid { grid-template-columns: repeat(2,1fr); } }
+  @media (max-width: 400px) { .dim-grid { grid-template-columns: 1fr; } }
 
   .dim-card {
-    grid-column: span 2;
     background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 10px;
     padding: 22px;
-    transition: background 0.2s, border-color 0.2s;
+    transition: background 0.2s;
     animation: fadeUp 0.4s ease both;
     position: relative;
     overflow: hidden;
   }
-  .dim-card:hover { background: var(--bg-hover); border-color: var(--border-hover); }
+  .dim-card:hover { background: var(--bg-hover); }
 
   /* accent line top */
   .dim-card::before {
@@ -351,7 +337,7 @@
 
   .dir-row {
     display: grid;
-    grid-template-columns: 160px 130px 1fr auto;
+    grid-template-columns: 160px 110px 1fr auto;
     align-items: center;
     gap: 12px;
     padding: 13px 20px;
@@ -377,7 +363,6 @@
     padding: 3px 10px;
     border-radius: 6px;
     letter-spacing: 0.01em;
-    white-space: nowrap;
   }
   .dir-badge.up { background: var(--accent-dim); color: var(--accent); }
   .dir-badge.down { background: var(--red-dim); color: var(--red); }
@@ -493,6 +478,206 @@
     line-height: 1.9;
   }
 
+  /* ── Panel shared ── */
+  .panel-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 44px;
+  }
+
+  .panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.12s;
+  }
+  .panel-head:hover { background: rgba(255,255,255,0.02); }
+
+  .panel-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text-2);
+  }
+
+  .panel-toggle {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-3);
+    transition: transform 0.2s;
+  }
+  .panel-toggle.open { transform: rotate(180deg); }
+
+  .panel-body {
+    padding: 20px;
+    display: none;
+  }
+  .panel-body.open { display: block; }
+
+  /* ── Context Mode ── */
+  .ctx-active {
+    margin-bottom: 16px;
+  }
+
+  .ctx-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--yellow-dim);
+    border: 1px solid rgba(251,191,36,0.15);
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+
+  .ctx-reason {
+    font-size: 0.82rem;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .ctx-meta {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    color: var(--yellow);
+    margin-top: 2px;
+  }
+
+  .ctx-del {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-3);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px 10px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .ctx-del:hover { border-color: var(--red); color: var(--red); }
+
+  .ctx-form {
+    display: grid;
+    grid-template-columns: 1fr 80px auto;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .ctx-input, .ctx-days {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 14px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .ctx-input:focus, .ctx-days:focus { border-color: rgba(251,191,36,0.4); }
+  .ctx-input::placeholder { color: var(--text-3); }
+
+  .ctx-btn {
+    padding: 9px 16px;
+    background: rgba(251,191,36,0.12);
+    color: var(--yellow);
+    border: 1px solid rgba(251,191,36,0.2);
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .ctx-btn:hover { background: rgba(251,191,36,0.2); }
+
+  .ctx-result {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-3);
+    margin-top: 10px;
+    min-height: 14px;
+  }
+  .ctx-result.ok  { color: var(--accent); }
+  .ctx-result.err { color: var(--red); }
+
+  /* ── Settings ── */
+  .settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 580px) { .settings-grid { grid-template-columns: 1fr; } }
+
+  .setting-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .setting-label {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .setting-input, .setting-select {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 14px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .setting-input:focus, .setting-select:focus { border-color: rgba(0,212,170,0.3); }
+
+  .settings-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .settings-result {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-3);
+    min-height: 14px;
+  }
+  .settings-result.ok  { color: var(--accent); }
+  .settings-result.err { color: var(--red); }
+
+  .settings-btn {
+    padding: 8px 20px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .settings-btn:hover { box-shadow: 0 4px 16px rgba(0,212,170,0.15); transform: translateY(-1px); }
+
   /* ── Footer ── */
   footer {
     display: flex;
@@ -557,7 +742,7 @@
 
   <div id="main-content" style="display:none">
 
-    <div class="stag">Dimensions — last 7 days</div>
+    <div class="stag">Dimensions</div>
     <div class="dim-grid" id="dim-grid"></div>
 
     <div class="stag">Weekly Direction</div>
@@ -592,6 +777,66 @@
     </div>
   </div>
 
+  <!-- Context Mode Panel -->
+  <div class="panel-card" id="ctx-card">
+    <div class="panel-head" onclick="togglePanel('ctx')">
+      <div class="panel-title">Context Mode</div>
+      <div class="panel-toggle" id="ctx-toggle">▾</div>
+    </div>
+    <div class="panel-body" id="ctx-body">
+      <div class="ctx-active" id="ctx-active-list"></div>
+      <div class="ctx-form">
+        <input class="ctx-input" id="ctx-reason" placeholder="e.g. traveling this week, sick, big project" />
+        <input class="ctx-days" id="ctx-days" type="number" min="1" max="14" value="5" />
+        <button class="ctx-btn" onclick="activateContextMode()">Set</button>
+      </div>
+      <div class="ctx-result" id="ctx-result"></div>
+    </div>
+  </div>
+
+  <!-- Settings Panel -->
+  <div class="panel-card" id="settings-card">
+    <div class="panel-head" onclick="togglePanel('settings')">
+      <div class="panel-title">Settings</div>
+      <div class="panel-toggle" id="settings-toggle">▾</div>
+    </div>
+    <div class="panel-body" id="settings-body">
+      <div class="settings-grid">
+        <div class="setting-row">
+          <div class="setting-label">Timezone</div>
+          <input class="setting-input" id="s-timezone" placeholder="Europe/Bucharest" />
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Weekly Digest Day</div>
+          <select class="setting-select" id="s-day">
+            <option value="monday">Monday</option>
+            <option value="tuesday">Tuesday</option>
+            <option value="wednesday">Wednesday</option>
+            <option value="thursday">Thursday</option>
+            <option value="friday">Friday</option>
+            <option value="saturday">Saturday</option>
+            <option value="sunday">Sunday</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Digest Hour (0–23)</div>
+          <input class="setting-input" id="s-hour" type="number" min="0" max="23" placeholder="8" />
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Language</div>
+          <select class="setting-select" id="s-lang">
+            <option value="en">English</option>
+            <option value="ro">Romanian</option>
+          </select>
+        </div>
+      </div>
+      <div class="settings-footer">
+        <div class="settings-result" id="settings-result"></div>
+        <button class="settings-btn" onclick="saveSettings()">Save</button>
+      </div>
+    </div>
+  </div>
+
   <footer>
     <div class="footer-brand">
       <svg viewBox="0 0 80 80" fill="none">
@@ -604,7 +849,7 @@
         <path d="M40 8 L58 28 L40 48 L22 28 Z" fill="url(#lg2)" opacity="0.9"/>
         <path d="M40 32 L58 52 L40 72 L22 52 Z" fill="url(#lg2)" opacity="0.35"/>
       </svg>
-      Digital Mirror · v1.0.0
+      Digital Mirror · v1.1.0
     </div>
     <div class="footer-links">
       <a href="/api/status">status</a>
@@ -786,6 +1031,118 @@ async function logEntry() {
 $('entry-input').addEventListener('keypress', e => { if(e.key==='Enter') logEntry(); });
 setInterval(load, 60000);
 load();
+loadContextModes();
+loadSettings();
+
+// ── Panel toggle ──────────────────────────────────────────────
+function togglePanel(id) {
+  const body    = $(id + '-body');
+  const toggle  = $(id + '-toggle');
+  const isOpen  = body.classList.toggle('open');
+  toggle.classList.toggle('open', isOpen);
+}
+
+// ── Context Mode ─────────────────────────────────────────────
+async function loadContextModes() {
+  try {
+    const res  = await fetch(`${API}/context-mode`);
+    const data = await res.json();
+    const list = $('ctx-active-list');
+    const modes = data.active || [];
+
+    if (!modes.length) {
+      list.innerHTML = '';
+      return;
+    }
+
+    list.innerHTML = modes.map(m => `
+      <div class="ctx-item">
+        <div>
+          <div class="ctx-reason">${m.reason}</div>
+          <div class="ctx-meta">${m.dimension ? m.dimension + ' · ' : 'all dimensions · '}${m.remaining_days ?? m.days} day(s) remaining</div>
+        </div>
+        <button class="ctx-del" onclick="deleteContextMode(${m.id})">Remove</button>
+      </div>
+    `).join('');
+  } catch (e) {
+    console.warn('Could not load context modes', e);
+  }
+}
+
+async function activateContextMode() {
+  const reason = $('ctx-reason').value.trim();
+  const days   = parseInt($('ctx-days').value) || 5;
+  const result = $('ctx-result');
+
+  if (!reason) { result.textContent = 'Enter a reason first.'; result.className = 'ctx-result err'; return; }
+
+  try {
+    const res  = await fetch(`${API}/context-mode`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason, days })
+    });
+    const data = await res.json();
+    result.textContent = `Context mode set for ${data.duration} days.`;
+    result.className = 'ctx-result ok';
+    $('ctx-reason').value = '';
+    await loadContextModes();
+    setTimeout(() => { result.textContent = ''; result.className = 'ctx-result'; }, 3000);
+  } catch {
+    result.textContent = 'Error setting context mode.';
+    result.className = 'ctx-result err';
+  }
+}
+
+async function deleteContextMode(id) {
+  try {
+    await fetch(`${API}/context-mode/${id}`, { method: 'DELETE' });
+    await loadContextModes();
+  } catch (e) { console.warn('Delete context mode failed', e); }
+}
+
+// ── Settings ─────────────────────────────────────────────────
+async function loadSettings() {
+  try {
+    const res  = await fetch(`${API}/settings`);
+    const data = await res.json();
+    if (data.timezone)          $('s-timezone').value = data.timezone;
+    if (data.weeklyDigestDay)   $('s-day').value      = data.weeklyDigestDay;
+    if (data.weeklyDigestHour !== undefined) $('s-hour').value = data.weeklyDigestHour;
+    if (data.language)          $('s-lang').value     = data.language;
+  } catch (e) { console.warn('Could not load settings', e); }
+}
+
+async function saveSettings() {
+  const result = $('settings-result');
+  const payload = {
+    timezone:          $('s-timezone').value.trim(),
+    weeklyDigestDay:   $('s-day').value,
+    weeklyDigestHour:  parseInt($('s-hour').value),
+    language:          $('s-lang').value
+  };
+  if (!payload.timezone) { delete payload.timezone; }
+
+  try {
+    const res  = await fetch(`${API}/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (res.ok) {
+      result.textContent = `Saved — digest: ${data.settings.weeklyDigestDay} at ${data.settings.weeklyDigestHour}:00 ${data.settings.timezone}`;
+      result.className = 'settings-result ok';
+    } else {
+      result.textContent = data.error || 'Error saving settings.';
+      result.className = 'settings-result err';
+    }
+    setTimeout(() => { result.textContent = ''; result.className = 'settings-result'; }, 4000);
+  } catch {
+    result.textContent = 'Error — is the backend running?';
+    result.className = 'settings-result err';
+  }
+}
 </script>
 </body>
 </html>

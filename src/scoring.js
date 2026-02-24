@@ -85,23 +85,10 @@ function calculateDirection(db, dimension) {
   const daily7 = db.getDailyScores(dimension, 7);
   const daily30 = db.getDailyScores(dimension, 30);
 
-  // Not enough data at all
   if (daily7.length < 2) {
     return {
       direction7d: 'Insufficient data',
       direction30d: 'Insufficient data',
-      slope7d: 0,
-      slope30d: 0,
-      calibrated: false
-    };
-  }
-
-  // Still calibrating — don't speculate on direction with sparse data
-  // Require: baseline exists OR at least 7 days of data before showing direction
-  if (!baseline && daily7.length < 7) {
-    return {
-      direction7d: 'Calibrating',
-      direction30d: 'Calibrating',
       slope7d: 0,
       slope30d: 0,
       calibrated: false
@@ -232,6 +219,91 @@ function getDimensionReport(db, dimension, expanded = false) {
   }
 
   return report;
+}
+
+// --- ALERT ENGINE ---
+
+const ALERT_STREAK_DAYS = parseInt(process.env.ALERT_STREAK_DAYS || '3');
+
+/**
+ * Detect proactive alerts per dimension.
+ * Returns array of alert objects for dimensions with 3+ consecutive days of movement.
+ */
+function detectAlerts(db, dimensions) {
+  const alerts = [];
+
+  for (const dimension of dimensions) {
+    const daily = db.getDailyScores(dimension, 7);
+    if (daily.length < ALERT_STREAK_DAYS) continue;
+
+    const recent = daily.slice(-ALERT_STREAK_DAYS).map(d => d.avg_score);
+
+    let allDown = true;
+    let allUp = true;
+    for (let i = 1; i < recent.length; i++) {
+      if (recent[i] >= recent[i - 1]) allDown = false;
+      if (recent[i] <= recent[i - 1]) allUp = false;
+    }
+
+    const baseline = db.getBaseline(dimension);
+    const baselineMean = baseline ? baseline.mean : null;
+
+    if (allDown) {
+      const drop = round1(recent[0] - recent[recent.length - 1]);
+      alerts.push({
+        dimension,
+        type: 'declining',
+        streak: ALERT_STREAK_DAYS,
+        message: getDecliningMessage(dimension),
+        severity: drop > 2 ? 'high' : 'moderate',
+        delta: -drop,
+        baselineMean,
+        detectedAt: new Date().toISOString()
+      });
+    } else if (allUp) {
+      const rise = round1(recent[recent.length - 1] - recent[0]);
+      alerts.push({
+        dimension,
+        type: 'ascending',
+        streak: ALERT_STREAK_DAYS,
+        message: getMotivationalMessage(dimension),
+        severity: 'positive',
+        delta: rise,
+        baselineMean,
+        detectedAt: new Date().toISOString()
+      });
+    }
+  }
+
+  return alerts;
+}
+
+/**
+ * Motivational message for ascending dimension.
+ */
+function getMotivationalMessage(dimension) {
+  const messages = {
+    finance:  'Your finances are moving in the right direction — whatever you changed this week, keep going.',
+    health:   'Three days of momentum in Health. The streak is real — protect it.',
+    career:   'Career is trending up. You\'re building something. Stay consistent.',
+    social:   'Social energy rising. Connection compounds — keep showing up.',
+    family:   'Family time trending up. This is the one that matters most — keep going.'
+  };
+  return messages[dimension] || `${dimensionLabel(dimension)} is trending upward. Keep going.`;
+}
+
+/**
+ * Alert message for declining dimension.
+ */
+function getDecliningMessage(dimension) {
+  const messages = {
+    finance:  'Finance has been slipping for 3 days. Worth a quick look — small patterns compound.',
+    health:   'Health signal dropping. Not a judgment — just a pattern. One good day resets the streak.',
+    career:   'Career signal below your baseline for 3 days. Might be a busy patch — or worth a check.',
+    social:   'Social has been declining. Isolation is sneaky. Even a short call counts.',
+    family:   'Family dimension trending down. You know what to do.'
+  };
+  return messages[dimension] || `${dimensionLabel(dimension)} has been declining for ${ALERT_STREAK_DAYS} days.`;
 }
 
 // --- WEEKLY SNAPSHOT ---
@@ -376,6 +448,9 @@ module.exports = {
   getWeeklySnapshot,
   getMonthlyReflection,
   formatWeeklyText,
+  detectAlerts,
+  getMotivationalMessage,
+  getDecliningMessage,
   dimensionLabel,
   DIMENSION_LABELS
 };

@@ -1,6 +1,6 @@
 {
   "name": "digital-mirror",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Direction engine for life. Calculates if you're ascending or descending.",
   "main": "server.js",
   "scripts": {

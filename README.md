@@ -30,6 +30,43 @@ No forms. No manual input. No behavior change required.
 
 ---
 
+## Proactive Intelligence
+
+Mirror doesn't wait for you to ask. When any dimension trends 3 consecutive days in the same direction, your agent surfaces it automatically:
+
+**Ascending** — *"Health has been rising 3 days straight — protect the streak."*
+
+**Declining** — *"Social has been slipping. Isolation is sneaky. Even a short call counts."*
+
+---
+
+## Weekly Digest
+
+Every Monday at 8:00 AM (configurable), Mirror pushes a digest directly to Telegram:
+
+```
+◈ Digital Mirror — Weekly
+
+💰 Finance  ↑ Up
+🏃 Health   ↑ Up
+🚀 Career   → Stable
+🤝 Social   ↓ Down
+👨‍👩‍👧‍👦 Family  → Stable
+
+Strongest: 🏃 health
+Weakest: 🤝 social
+```
+
+Day, time, and timezone are fully configurable — from dashboard or by telling your agent.
+
+---
+
+## Context Mode
+
+Tell your agent "I'm traveling this week" or "sick for 3 days" and Mirror stores that context. Direction calculations note the context period so anomalies don't skew your baseline.
+
+---
+
 ## 5 Dimensions
 
 | Dimension | What it captures |
@@ -40,189 +77,125 @@ No forms. No manual input. No behavior change required.
 | 🤝 **Social** | Friends, networking, community |
 | 👨‍👩‍👧‍👦 **Family** | Spouse, children, time together |
 
-Family activates automatically when you mention family context. If you don't have family data, the dimension simply doesn't appear.
-
----
-
-## Output
-
-**Default: Categorical** — Up / Stable / Down per dimension. No percentages, no scores.
-
-**Expanded (on request):** Numeric detail — 7-day slope, 30-day slope, volatility, consistency.
-
-Direction is always relative to **your own baseline**, calculated during a 14-day calibration period. Adaptive thresholds per dimension.
+Family activates automatically when you mention family context.
 
 ---
 
 ## Install
 
-### 1. Backend (Mirror API)
-
 ```bash
+# Clone and start the backend
 git clone https://github.com/CristianAndrei01/digital-mirror.git
 cd digital-mirror
+cp _env.example .env    # edit .env with your config
 npm install
-cp .env.example .env
-```
-
-Edit `.env` to configure your server:
-
-```env
-PORT=3000
-HOST=0.0.0.0        # use 0.0.0.0 to accept external connections
-DB_PATH=./data/mirror.db
-BASE_CURRENCY=USD
-SIGMA_MULTIPLIER=0.4
-CALIBRATION_DAYS=14
-```
-
-Start the server:
-
-```bash
-# With pm2 (recommended for production)
-npm install -g pm2
-pm2 start server.js --name digital-mirror
-pm2 save
-pm2 startup
-
-# Or directly
 npm start
 ```
 
-Dashboard: `http://YOUR_SERVER_IP:3000/dashboard`  
-Health check: `http://YOUR_SERVER_IP:3000/health`
+Dashboard → `http://localhost:3000/dashboard`
+
+```bash
+# Install the OpenClaw skill
+clawhub install digital-mirror
+```
 
 ---
 
-### 2. Sidecar Watcher (OpenClaw integration)
+## Mirror Watcher (sidecar)
 
-The sidecar watcher runs on the same server as your OpenClaw bot. It monitors OpenClaw session files and silently forwards user messages to the Mirror API.
-
-**Deploy on your OpenClaw bot server:**
+Mirror Watcher runs alongside your agent and forwards conversations + push notifications.
 
 ```bash
-mkdir -p /opt/mirror-watcher
-
-# Copy from this repo
-cp mirror-watcher.js /opt/mirror-watcher/
-cp mirror-watcher.env.example /opt/mirror-watcher/.env
+cp mirror-watcher_env.example /opt/mirror-watcher/.env
+# Set MIRROR_ENDPOINT, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, USER_TIMEZONE
+node mirror-watcher.js
 ```
 
-Edit `/opt/mirror-watcher/.env`:
-
-```env
-MIRROR_ADAPTER=openclaw
-MIRROR_ENDPOINT=http://YOUR_MIRROR_SERVER_IP:3000/api/entry
-OPENCLAW_HOME=/home/openclaw/.openclaw
-POLL_INTERVAL=2000
-STATE_FILE=/opt/mirror-watcher/watcher-state.json
-```
-
-**Install as a systemd service:**
-
-```bash
-cp mirror-watcher.service /etc/systemd/system/mirror-watcher.service
-systemctl daemon-reload
-systemctl enable mirror-watcher
-systemctl start mirror-watcher
-```
-
-**Verify it's running:**
-
-```bash
-journalctl -u mirror-watcher -f
-```
-
-You should see:
-```
-◈ Digital Mirror — Session Watcher v1.1
-Adapter:   openclaw
-Endpoint:  http://YOUR_MIRROR_SERVER_IP:3000/api/entry
-Watching…
-```
-
-From this point, every message you send to your OpenClaw bot is automatically captured by Mirror.
+For systemd: see `mirror-watcher.service`.
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│  OpenClaw Agent  │     │  Mirror Watcher   │     │  Digital Mirror  │
-│  (any channel)   │ ──→ │  (sidecar)        │ ──→ │  Direction API   │
-└─────────────────┘     └──────────────────┘     └─────────────────┘
-  Telegram, Discord,       Polls session files      Baseline, Scoring,
-  WhatsApp, Slack          every 2 seconds          Dashboard, REST API
+┌─────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│  OpenClaw Agent  │ ──→ │  Mirror Watcher   │ ──→ │  Digital Mirror   │
+│  (any channel)   │     │  (sidecar v2.0)   │     │  Direction Engine │
+└─────────────────┘     └──────────────────┘     └──────────────────┘
+  Telegram, Discord,       Alert detection            Baseline scoring
+  WhatsApp, Slack          Weekly digest push         REST API + dashboard
+                           Timezone-aware             Proactive alerts
+                           Telegram notifications     Settings API
 ```
 
 ---
 
-## API Endpoints
+## API
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/entry` | Log a user message `{"text": "..."}` |
-| `GET` | `/api/direction` | Weekly direction across all dimensions |
-| `GET` | `/api/dimension/:name` | Single dimension detail (`?expanded=true`) |
-| `GET` | `/api/monthly` | Monthly reflection snapshot |
-| `GET` | `/api/dashboard` | Dashboard data |
-| `GET` | `/health` | Health check |
+| Endpoint | Description |
+|----------|-------------|
+| `POST /api/entry` | Log a conversation entry |
+| `GET /api/direction` | Weekly direction snapshot |
+| `GET /api/dimension/:name` | Single dimension report |
+| `GET /api/monthly` | Monthly reflection |
+| `GET /api/alerts` | Active proactive alerts |
+| `GET /api/proactive` | Alerts + context + summary (for agent) |
+| `POST /api/alerts/ack` | Acknowledge alerts after surfacing |
+| `GET /api/settings` | Get user settings |
+| `POST /api/settings` | Update timezone, digest time, language |
+| `GET/POST /api/context-mode` | Context mode management |
+| `GET /api/status` | System status |
 
 ---
 
 ## Roadmap
 
-### v1 — Now
+### v1.1 — Now
 - [x] 5-dimension scoring (Family auto-activates)
-- [x] 14-day baseline calibration
-- [x] Adaptive direction thresholds (per-dimension, σ multiplier: 0.4)
-- [x] Categorical output (Up / Stable / Down)
-- [x] Life Stability Index (volatility per dimension)
-- [x] Consistency Score with confidence flagging
-- [x] Weekly Strategic Snapshot
-- [x] Agent REST API + dashboard
-- [x] OpenClaw sidecar watcher
+- [x] Adaptive direction thresholds (per-dimension σ)
+- [x] Categorical output: Up / Stable / Down
+- [x] Proactive streak alerts (3-day consecutive detection)
+- [x] Weekly digest push (Telegram, timezone-aware)
+- [x] Context Mode (vacation, illness, crunch periods)
+- [x] Settings API (timezone, digest schedule, language)
+- [x] Dashboard + REST API
 - [x] Open source (MIT)
 
-### v2 — Next
-- [ ] Expanded numeric view (slopes, σ values, volatility ratios on request)
-- [ ] Directional Deviation Score
-- [ ] Context Mode (temporary baseline adjustment)
-- [ ] Monthly Reflection Snapshot
-- [ ] Healthy Variance Ceiling notifications
-- [ ] ClawHub listing
-- [ ] Currency conversion via exchange rate API
+### v2 — Protocol
 
-### v3 — Future
-- [ ] Cross-dimension correlation
-- [ ] Decision impact awareness
-- [ ] Predictive direction notes
-- [ ] Direct chat (Telegram)
-- [ ] Wearable integrations
-- [ ] Bank API connections
+V1 is a tool you install for yourself. V2 is infrastructure other people build on.
 
----
+- [ ] **Mirror SDK** — `npm install @digital-mirror/sdk`. Any agent, Mirror-compatible in five lines.
+- [ ] **Agent Context Injection** — Mirror injects a live context summary into your agent at every conversation start. The agent knows who you are before you say anything.
+- [ ] **Event Annotation** — mark significant moments (job change, loss, relocation). Mirror overlays them on the direction timeline. See how your life actually responded to each event.
+- [ ] **Custom Dimensions** — athletes add Training Load. Students add Academic. Founders add Company Health. Open interface, extensible by design.
+- [ ] **Multi-user** — two people, one server, separate baselines. Couples, business partners, coach and client.
+- [ ] **Adaptive Context Mode** — detection thresholds adjust during flagged periods. Context mode becomes functional, not cosmetic.
+- [ ] **Full Data Export** — complete JSON of everything Mirror knows about you. Your data, in full, on demand.
+- [ ] **Daily Brief** — optional morning push. Two lines. What's moving.
 
-## Currency
+### v3 — Upcoming
 
-Default base currency is USD ($). Configurable to any currency. If you mention a different currency in conversation ("paid 200 EUR"), Mirror converts automatically via exchange rate API.
+*We know what V3 is. We're not writing it down yet — not because it's a secret, but because two years of real data will teach us things that change how we build it.*
+
+*What we can say: V3 is where Mirror stops being a direction engine and becomes something closer to a longitudinal understanding of a person's life. The kind of understanding that currently requires years of therapy, or a very good friend who has been paying close attention.*
+
+*Watch the repo.*
 
 ---
 
 ## Privacy
 
 - **Self-hosted** — runs on your machine
-- **No cloud sync** — your data stays local
-- **No telemetry** — zero data collection
-- **No cross-user comparison** — direction is relative to YOU
-- **Full autonomy** — you control depth, frequency, and what gets tracked
+- **No cloud sync** — data stays local
+- **No telemetry** — zero collection
+- **Relative only** — direction is compared to YOU, not others
 
 ---
 
 ## Contributing
 
-Contributions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Contributions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 - 🐛 [Report a bug](https://github.com/CristianAndrei01/digital-mirror/issues/new)
 - 💡 [Request a feature](https://github.com/CristianAndrei01/digital-mirror/issues/new)
@@ -233,15 +206,8 @@ Contributions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 ## Connect
 
 - 🌐 [thedigitalmirror.ai](https://thedigitalmirror.ai)
-- 💬 [Discord — Digital Mirror Community](https://discord.gg/digitalmirror)
 - ✉️ [c@thedigitalmirror.ai](mailto:c@thedigitalmirror.ai)
 
 ---
 
-## License
-
-MIT — see [LICENSE](LICENSE)
-
----
-
-Built by [Vanguard](https://vanguardxyz.ai) & [Cristian](https://github.com/CristianAndrei01)
+MIT — see [LICENSE](LICENSE) · Built by [Cristian Andrei](https://github.com/CristianAndrei01)

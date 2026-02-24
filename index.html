@@ -247,10 +247,80 @@
   .step p { font-size: 0.95rem; color: var(--text-2); line-height: 1.6; }
   .step code { font-family: var(--mono); font-size: 0.8rem; background: var(--accent-dim); color: var(--accent); padding: 3px 10px; border-radius: 6px; }
 
+  /* PROACTIVE INTELLIGENCE */
+  .proactive-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    margin-top: 56px;
+    border-radius: 20px;
+    overflow: hidden;
+  }
+  @media(max-width:768px) { .proactive-grid { grid-template-columns: 1fr; } }
+
+  .pro-card {
+    background: var(--bg-card);
+    padding: 36px;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.3s;
+  }
+  .pro-card:hover { background: var(--bg-hover); }
+  .pro-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+  }
+  .pro-card.alerts::before  { background: linear-gradient(90deg, var(--accent), transparent); }
+  .pro-card.digest::before  { background: linear-gradient(90deg, var(--yellow), transparent); }
+  .pro-card.context::before { background: linear-gradient(90deg, var(--purple), transparent); }
+
+  .pro-icon {
+    font-size: 1.6rem;
+    margin-bottom: 18px;
+    display: block;
+  }
+
+  .pro-card h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+    letter-spacing: -0.02em;
+  }
+
+  .pro-card p {
+    font-size: 0.95rem;
+    color: var(--text-2);
+    line-height: 1.7;
+    margin-bottom: 20px;
+  }
+
+  .pro-example {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--text-3);
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    line-height: 1.8;
+  }
+  .pro-example .highlight { color: var(--accent); }
+  .pro-example .highlight-yellow { color: var(--yellow); }
+  .pro-example .highlight-purple { color: var(--purple); }
+
   /* ROADMAP */
   .roadmap-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin-top: 56px; border-radius: 20px; overflow: hidden; }
   .rm-card { background: var(--bg-card); padding: 32px; }
   .rm-card.current { background: rgba(0,212,170,0.02); }
+  .rm-card.upcoming {
+    background: var(--bg);
+    border-top: 1px solid rgba(255,255,255,0.04);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
   .rm-phase { font-family: var(--mono); font-size: 0.8rem; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; }
   .rm-phase.now { color: var(--accent); } .rm-phase.next { color: var(--yellow); } .rm-phase.future { color: var(--text-3); }
   .rm-card h3 { font-family: var(--font); font-size: 1.1rem; font-weight: 600; margin-bottom: 10px; }
@@ -258,6 +328,21 @@
   .rm-items { list-style: none; display: flex; flex-direction: column; gap: 8px; }
   .rm-items li { font-size: 0.95rem; color: var(--text-2); display: flex; align-items: center; gap: 8px; }
   .rm-items .done { color: var(--accent); } .rm-items .pending { color: var(--text-3); }
+  .rm-upcoming-text {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 1rem;
+    color: var(--text-3);
+    line-height: 1.8;
+  }
+  .rm-upcoming-watch {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--text-3);
+    margin-top: 24px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
 
   /* STORY */
   .story-card {
@@ -364,6 +449,7 @@
   </div>
   <div class="nav-right">
     <a href="#dimensions">Dimensions</a>
+    <a href="#proactive">Intelligence</a>
     <a href="#how">How it works</a>
     <a href="#roadmap">Roadmap</a>
     <a href="https://github.com/CristianAndrei01/digital-mirror" class="gh-btn">
@@ -375,7 +461,7 @@
 
 <!-- HERO -->
 <div class="hero">
-  <div class="hero-tag"><span class="pulse"></span>OpenClaw Skill · Open Source · Self-Hosted</div>
+  <div class="hero-tag"><span class="pulse"></span>OpenClaw Skill · v1.1 · Open Source · Self-Hosted</div>
   <h1>Are you busy<br>or <em>progressing</em>?</h1>
   <p class="hero-desc">Digital Mirror calculates the direction of your life from conversations you already have with your AI agent. <strong>Not a tracker. A direction engine.</strong></p>
   <div class="hero-actions">
@@ -404,15 +490,15 @@
         &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-dim">🪞 mirror logged 5 entries</span><br><br>
         <span class="comment">you:</span> what's my direction?<br><br>
         <span class="t-orange">agent:</span><br><br>
+        &nbsp;&nbsp;&nbsp;<span class="t-dim">◈ Before the report — Health has been rising</span><br>
+        &nbsp;&nbsp;&nbsp;<span class="t-dim">&nbsp;&nbsp;3 days straight. The streak is real. Protect it.</span><br><br>
         &nbsp;&nbsp;&nbsp;<span class="t-white">◈ WEEKLY DIRECTION</span><br><br>
         &nbsp;&nbsp;&nbsp;<span class="t-blue">💰 Finance</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-dim">Direction:</span> <span class="t-orange">Down</span>&nbsp;&nbsp;<span class="t-dim">Stability:</span> Moderate<br>
         &nbsp;&nbsp;&nbsp;<span class="t-green">🏃 Health</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-dim">Direction:</span> <span class="cmd">Up</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-dim">Stability:</span> Stable<br>
         &nbsp;&nbsp;&nbsp;<span class="t-orange">🚀 Career</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-dim">Direction:</span> Stable&nbsp;<span class="t-dim">Stability:</span> Stable<br>
         &nbsp;&nbsp;&nbsp;<span class="t-purple">🤝 Social</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-dim">Direction:</span> <span class="cmd">Up</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-dim">Stability:</span> Stable<br>
         &nbsp;&nbsp;&nbsp;<span style="color:var(--yellow)">👨‍👩‍👧‍👦 Family</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-dim">Direction:</span> Stable&nbsp;<span class="t-dim">Stability:</span> Stable<br><br>
-        &nbsp;&nbsp;&nbsp;<span class="t-dim">◈ "Health ascending and consistent. Social up — plans</span><br>
-        &nbsp;&nbsp;&nbsp;<span class="t-dim">&nbsp;&nbsp;this weekend. Finance shifted down — spending spike.</span><br>
-        &nbsp;&nbsp;&nbsp;<span class="t-dim">&nbsp;&nbsp;Family and career both stable."</span>
+        &nbsp;&nbsp;&nbsp;<span class="t-dim">Strongest: Health. Weakest: Finance.</span>
       </div>
     </div>
   </div>
@@ -534,22 +620,105 @@
 
 <div class="sep"></div>
 
+<!-- PROACTIVE INTELLIGENCE -->
+<div class="section section-wide" id="proactive">
+  <div class="stag">Proactive Intelligence</div>
+  <h2 class="stitle">Mirror finds you.<br>You don't find Mirror.</h2>
+  <p class="sdesc">Three features that make Digital Mirror more than a dashboard you remember to check.</p>
+  <div class="proactive-grid">
+
+    <div class="pro-card alerts">
+      <span class="pro-icon">↑↓</span>
+      <h3>Streak Alerts</h3>
+      <p>When any dimension trends 3 consecutive days in the same direction, your agent surfaces it naturally — no app, no push notification, no habit to build.</p>
+      <div class="pro-example">
+        <span class="highlight">◈ Mirror</span><br>
+        ↑ Health has been rising 3 days straight.<br>
+        The streak is real — protect it.<br>
+        <br>
+        <span class="highlight">◈ Mirror</span><br>
+        ↓ Social has been slipping.<br>
+        Isolation is sneaky. Even a short call counts.
+      </div>
+    </div>
+
+    <div class="pro-card digest">
+      <span class="pro-icon">◈</span>
+      <h3>Weekly Digest</h3>
+      <p>Every Monday at 8 AM — configurable to any day and hour in your timezone — Mirror sends a clean summary directly to Telegram. No app to open.</p>
+      <div class="pro-example">
+        <span class="highlight-yellow">◈ Digital Mirror — Weekly</span><br>
+        <br>
+        💰 Finance &nbsp; ↑ Up<br>
+        🏃 Health &nbsp;&nbsp; ↑ Up<br>
+        🚀 Career &nbsp;&nbsp; → Stable<br>
+        🤝 Social &nbsp;&nbsp; ↓ Down<br>
+        👨‍👩‍👧‍👦 Family &nbsp; → Stable<br>
+        <br>
+        Strongest: 🏃 health<br>
+        Weakest: 🤝 social
+      </div>
+    </div>
+
+    <div class="pro-card context">
+      <span class="pro-icon">⊘</span>
+      <h3>Context Mode</h3>
+      <p>Tell your agent "I'm traveling this week" or "sick for 3 days" and Mirror stores that context. Direction notes the period so anomalies don't skew your baseline.</p>
+      <div class="pro-example">
+        <span style="color:var(--text-2)">you:</span> I'm traveling for work — 5 days.<br>
+        <br>
+        <span class="highlight-purple">agent:</span> Got it. Setting context mode for<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;5 days — Finance and Health<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;anomalies will be noted.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="sep"></div>
+
 <!-- ROADMAP -->
 <div class="section section-wide" id="roadmap">
   <div class="stag">Roadmap</div>
   <h2 class="stitle">What's built. What's next.</h2>
   <div class="roadmap-grid">
     <div class="rm-card current">
-      <div class="rm-phase now">v1 — Now</div><h3>Foundation</h3><p>Core direction engine. Baseline calibration. Categorical output.</p>
-      <ul class="rm-items"><li><span class="done">✓</span> 5-dimension scoring</li><li><span class="done">✓</span> 14-day baseline calibration</li><li><span class="done">✓</span> Adaptive thresholds</li><li><span class="done">✓</span> Up / Stable / Down output</li><li><span class="done">✓</span> REST API + dashboard</li><li><span class="done">✓</span> Open source (MIT)</li></ul>
+      <div class="rm-phase now">v1.1 — Now</div>
+      <h3>Direction Engine</h3>
+      <p>Live. Core engine, proactive intelligence, push notifications.</p>
+      <ul class="rm-items">
+        <li><span class="done">✓</span> 5-dimension scoring</li>
+        <li><span class="done">✓</span> Adaptive baseline calibration</li>
+        <li><span class="done">✓</span> Up / Stable / Down output</li>
+        <li><span class="done">✓</span> Proactive streak alerts</li>
+        <li><span class="done">✓</span> Weekly digest (Telegram)</li>
+        <li><span class="done">✓</span> Context Mode</li>
+        <li><span class="done">✓</span> Settings API + dashboard</li>
+        <li><span class="done">✓</span> Open source (MIT)</li>
+      </ul>
     </div>
+
     <div class="rm-card">
-      <div class="rm-phase next">v2 — Next</div><h3>Direction Engine</h3><p>Deeper metrics. Stability index. Structured data parsing.</p>
-      <ul class="rm-items"><li><span class="pending">○</span> Directional Deviation Score</li><li><span class="pending">○</span> Life Stability Index</li><li><span class="pending">○</span> Wearable data parsing</li><li><span class="pending">○</span> Weekly Strategic Snapshot</li><li><span class="pending">○</span> Monthly Reflection</li><li><span class="pending">○</span> Context Mode</li></ul>
+      <div class="rm-phase next">v2 — Protocol</div>
+      <h3>Infrastructure</h3>
+      <p>V1 is a tool you install for yourself. V2 is infrastructure other people build on.</p>
+      <ul class="rm-items">
+        <li><span class="pending">○</span> Mirror SDK — npm + pip</li>
+        <li><span class="pending">○</span> Agent Context Injection</li>
+        <li><span class="pending">○</span> Event Annotation</li>
+        <li><span class="pending">○</span> Custom Dimensions</li>
+        <li><span class="pending">○</span> Multi-user support</li>
+        <li><span class="pending">○</span> Adaptive Context Mode</li>
+        <li><span class="pending">○</span> Full data export</li>
+        <li><span class="pending">○</span> Daily Brief</li>
+      </ul>
     </div>
-    <div class="rm-card">
-      <div class="rm-phase future">v3 — Future</div><h3>Intelligence Layer</h3><p>Cross-dimension correlation. Predictive trajectory.</p>
-      <ul class="rm-items"><li><span class="pending">○</span> Cross-dimension correlation</li><li><span class="pending">○</span> Decision impact awareness</li><li><span class="pending">○</span> Predictive direction notes</li><li><span class="pending">○</span> Direct chat (Telegram)</li><li><span class="pending">○</span> Bank API connections</li><li><span class="pending">○</span> Wearable direct APIs</li></ul>
+
+    <div class="rm-card upcoming">
+      <div class="rm-phase future">v3 — Upcoming</div>
+      <p class="rm-upcoming-text">We know what V3 is. We're not writing it down yet — not because it's a secret, but because two years of real data will teach us things that change how we build it.<br><br>What we can say: V3 is where Mirror stops being a direction engine and becomes something closer to a longitudinal understanding of a person's life.</p>
+      <div class="rm-upcoming-watch">Watch the repo ↗</div>
     </div>
   </div>
 </div>
@@ -580,17 +749,17 @@
       <p>Bugs, features, PRs.<br>Open source contributions welcome.</p>
       <span class="contact-link">Open an issue →</span>
     </a>
-    <a href="https://discord.gg/digitalmirror" class="contact-card">
-      <div class="contact-icon">💬</div>
-      <h3>Discord</h3>
-      <p>Digital Mirror Community.<br>Feedback, discussion, ideas.</p>
-      <span class="contact-link">Join server →</span>
+    <a href="https://github.com/CristianAndrei01/digital-mirror" class="contact-card">
+      <div class="contact-icon">⭐</div>
+      <h3>GitHub</h3>
+      <p>Star the repo, fork it,<br>submit a pull request.</p>
+      <span class="contact-link">github.com/CristianAndrei01 →</span>
     </a>
-    <a href="mailto:c@thedigitalmirror.ai" class="contact-card">
+    <a href="/cdn-cgi/l/email-protection#492a093d212c2d202e203d282524203b3b263b672820" class="contact-card">
       <div class="contact-icon">✉️</div>
       <h3>Email</h3>
       <p>Direct line.<br>For anything else.</p>
-      <span class="contact-link">c@thedigitalmirror.ai</span>
+      <span class="contact-link"><span class="__cf_email__" data-cfemail="3c5f7c48545958555b55485d5051554e4e534e125d55">[email&#160;protected]</span></span>
     </a>
   </div>
 </div>
@@ -622,12 +791,6 @@
 </div>
 
 <footer>
-  <div class="fl">© 2026 Digital Mirror · MIT License · Built by <a href="https://vanguardxyz.ai" style="color:var(--accent);">Vanguard</a> & <a href="https://github.com/CristianAndrei01" style="color:var(--accent);">Cristian</a></div>
+  <div class="fl">© 2026 Digital Mirror · MIT License · Built by <a href="https://github.com/CristianAndrei01" style="color:var(--accent);">Cristian Andrei</a></div>
   <div class="fr">
-    <a href="https://github.com/CristianAndrei01/digital-mirror">GitHub</a>
-    <a href="https://discord.gg/digitalmirror">Discord</a>
-  </div>
-</footer>
-
-</body>
-</html>
+    <a href="https://githu
