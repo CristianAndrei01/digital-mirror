@@ -19,8 +19,14 @@ const DB_PATH = process.env.DB_PATH || './data/mirror.db';
 const db = new MirrorDatabase(path.resolve(DB_PATH));
 
 const app = express();
-app.use(cors({ origin: true }));
-app.use(express.json());
+
+// CORS — restrict to known origins in production
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  : true; // true = allow all (self-hosted default)
+
+app.use(cors({ origin: allowedOrigins }));
+app.use(express.json({ limit: '64kb' })); // prevent oversized payloads
 
 // API routes
 app.use('/api', createApi(db));
