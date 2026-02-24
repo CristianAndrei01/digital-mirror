@@ -277,7 +277,38 @@ async function checkAlerts() {
   } catch (e) { logErr('Alert check failed', e); }
 }
 
-// ─── Weekly Digest ───────────────────────────────────────────
+// ─── Context Mode Auto-Detection ────────────────────────────
+const CONTEXT_SIGNALS = [
+  { pattern: /\b(sick|ill|fever|cold|flu|not feeling well|under the weather|răcit|bolnav|febr[ăa]|mă doare|nu mă simt|gripm[ăa]|angină)\b/i, reason: 'sick', days: 4 },
+  { pattern: /\b(traveling|travelling|on a trip|flying|on the road|în vacanț[ăa]|plec din|călătoresc|deplasare|sunt plecat)\b/i, reason: 'traveling', days: 7 },
+  { pattern: /\b(vacation|holiday|concediu|pe plaj[ăa]|la mare|la munte|time off)\b/i, reason: 'vacation', days: 7 },
+  { pattern: /\b(overwhelmed|burnout|burn out|crazy week|s[ăa]pt[ăa]m[âa]n[ăa] nebun[ăa]|overloaded|exhausted|epuizat)\b/i, reason: 'high stress', days: 5 },
+  { pattern: /\b(surgery|operation|hospital|spital|operat)\b/i, reason: 'medical procedure', days: 7 },
+];
+
+async function detectContextSignals(text) {
+  for (const signal of CONTEXT_SIGNALS) {
+    if (!signal.pattern.test(text)) continue;
+
+    // Don't re-activate same reason today
+    const key = `ctx:${signal.reason}:${todayStr()}`;
+    if (state.contextModeSent && state.contextModeSent[key]) continue;
+
+    try {
+      const res = await mirrorPost('/context-mode', { reason: signal.reason, days: signal.days });
+      if (res.status === 200 || res.status === 201) {
+        if (!state.contextModeSent) state.contextModeSent = {};
+        state.contextModeSent[key] = new Date().toISOString();
+        log(`[Context] Auto-activated — ${signal.reason} (${signal.days}d)`);
+        saveState();
+      }
+    } catch (e) { logErr('Context mode activation failed', e); }
+
+    break; // one signal per message is enough
+  }
+}
+
+
 async function sendWeeklyDigest() {
   try {
     const res = await mirrorGet('/direction');
@@ -543,6 +574,8 @@ async function main() {
           state.messagesSent++;
           state.lastTimestamp = msg.timestamp;
           log(`→ [${state.messagesSent}] "${msg.text.slice(0, 70)}${msg.text.length > 70 ? '…' : ''}"`);
+          // Auto-detect context signals in every user message
+          await detectContextSignals(msg.text);
         } catch (e) {
           state.errors++;
           logErr('POST failed', e);
