@@ -955,6 +955,9 @@ function renderStats(s) {
 
 function renderDims(dims, calibration) {
   if (!dims?.length) return;
+  const total = dims.length;
+  const remainder = total % 3;
+
   $('dim-grid').innerHTML = dims.map((d, i) => {
     const c = cls(d.direction7d);
     const name = d.dimension.charAt(0).toUpperCase() + d.dimension.slice(1);
@@ -962,11 +965,15 @@ function renderDims(dims, calibration) {
     const isCalib = calibration?.[d.dimension];
     const [dN, dT] = (d.daysWithData||'0/14').split('/').map(Number);
     const pct = Math.min(100, Math.round((dN/(dT||14))*100));
-    // If last item and odd total — span full width to avoid empty cell
-    const spanFull = (dims.length % 3 !== 0) && (i === dims.length - 1) ? 'grid-column: 1 / -1;' : '';
+
+    // Last row balancing
+    let span = '';
+    if (remainder === 1 && i === total - 1) span = 'grid-column: 1 / -1;';
+    if (remainder === 2 && i === total - 2) span = 'grid-column: 1 / 2;';
+    if (remainder === 2 && i === total - 1) span = 'grid-column: 2 / 4;';
 
     return `
-      <div class="dim-card ${c}" style="animation-delay:${i*0.06}s;${spanFull}">
+      <div class="dim-card ${c}" style="animation-delay:${i*0.06}s;${span}">
         <div class="dim-top">
           <div class="dim-name">${icon} ${name}</div>
           <div class="dim-conf">${d.confidence}</div>
