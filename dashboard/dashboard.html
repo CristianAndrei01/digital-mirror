@@ -363,6 +363,7 @@
     padding: 3px 10px;
     border-radius: 6px;
     letter-spacing: 0.01em;
+    white-space: nowrap;
   }
   .dir-badge.up { background: var(--accent-dim); color: var(--accent); }
   .dir-badge.down { background: var(--red-dim); color: var(--red); }
@@ -645,6 +646,10 @@
     appearance: none;
   }
   .setting-input:focus, .setting-select:focus { border-color: rgba(0,212,170,0.3); }
+  .setting-select option {
+    background: #1a1a1a;
+    color: var(--text);
+  }
 
   .settings-footer {
     display: flex;
@@ -823,7 +828,7 @@
           <input class="setting-input" id="s-hour" type="number" min="0" max="23" placeholder="8" />
         </div>
         <div class="setting-row">
-          <div class="setting-label">Language</div>
+          <div class="setting-label">Agent Language</div>
           <select class="setting-select" id="s-lang">
             <option value="en">English</option>
             <option value="ro">Romanian</option>
@@ -833,6 +838,10 @@
       <div class="settings-footer">
         <div class="settings-result" id="settings-result"></div>
         <button class="settings-btn" onclick="saveSettings()">Save</button>
+      </div>
+      <div style="margin-top:12px; font-family:var(--mono); font-size:0.62rem; color:var(--text-3); line-height:1.7;">
+        Timezone + digest schedule apply to push notifications via Mirror Watcher.<br>
+        Agent Language sets the language your AI agent uses when surfacing Mirror insights.
       </div>
     </div>
   </div>
@@ -953,9 +962,11 @@ function renderDims(dims, calibration) {
     const isCalib = calibration?.[d.dimension];
     const [dN, dT] = (d.daysWithData||'0/14').split('/').map(Number);
     const pct = Math.min(100, Math.round((dN/(dT||14))*100));
+    // If last item and odd total — span full width to avoid empty cell
+    const spanFull = (dims.length % 3 !== 0) && (i === dims.length - 1) ? 'grid-column: 1 / -1;' : '';
 
     return `
-      <div class="dim-card ${c}" style="animation-delay:${i*0.06}s">
+      <div class="dim-card ${c}" style="animation-delay:${i*0.06}s;${spanFull}">
         <div class="dim-top">
           <div class="dim-name">${icon} ${name}</div>
           <div class="dim-conf">${d.confidence}</div>
