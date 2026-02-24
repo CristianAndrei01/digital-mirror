@@ -856,6 +856,7 @@
       <a href="/api/direction">api</a>
       <a href="https://github.com/CristianAndrei01/digital-mirror" target="_blank">github</a>
       <a href="https://thedigitalmirror.ai" target="_blank">site</a>
+      <a href="#" onclick="exportData(event)" style="color:var(--accent)">↓ export</a>
     </div>
   </footer>
 
@@ -1033,6 +1034,23 @@ setInterval(load, 60000);
 load();
 loadContextModes();
 loadSettings();
+
+async function exportData(e) {
+  e.preventDefault();
+  try {
+    const res  = await fetch(`${API}/export`);
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    a.href     = url;
+    a.download = `digital-mirror-export-${date}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch {
+    alert('Export failed — is the backend running?');
+  }
+}
 
 // ── Panel toggle ──────────────────────────────────────────────
 function togglePanel(id) {
