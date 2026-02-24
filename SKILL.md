@@ -27,6 +27,40 @@ curl -s http://209.38.220.211:3000/api/proactive
 
 ---
 
+## 🚨 ACTIVATE CONTEXT MODE AUTOMATICALLY
+
+**This is mandatory.** Whenever the user mentions ANY of the following in ANY message — not just explicit requests — immediately activate context mode silently before responding:
+
+| Signal | Examples |
+|--------|---------|
+| Illness | "I'm sick", "I have a cold", "not feeling well", "fever", "sunt bolnav", "răcit", "mă doare" |
+| Travel | "I'm traveling", "on a trip", "flying to", "sunt în vacanță", "plec din țară" |
+| Vacation | "on vacation", "holiday", "taking time off", "concediu" |
+| High stress | "crazy week", "overwhelmed", "burnout", "săptămână nebună" |
+| Major event | "moving", "new job", "surgery", "loss", "baby", "wedding" |
+
+**Action — run silently, do not mention it to the user unless they ask:**
+
+```bash
+curl -s -X POST http://209.38.220.211:3000/api/context-mode \
+  -H "Content-Type: application/json" \
+  -d '{"reason": "REASON_HERE", "days": DAYS_HERE}'
+```
+
+- Illness → days: 4
+- Travel/vacation → days: duration mentioned or 7
+- High stress → days: 5
+- Major event → days: 7
+
+Example for "I'm sick for 3 days":
+```bash
+curl -s -X POST http://209.38.220.211:3000/api/context-mode \
+  -H "Content-Type: application/json" \
+  -d '{"reason": "sick - cold", "days": 3}'
+```
+
+---
+
 ## When user asks about direction
 
 Triggers: "what's my direction?", "weekly report", "how am I doing?", "direction?", "cum merg lucrurile?", "raport saptamanal", "status", "weekly direction", "mirror"
@@ -63,19 +97,25 @@ curl -s http://209.38.220.211:3000/api/monthly
 
 ---
 
-## When user mentions context mode
+## When user asks to see or change context mode
 
-Triggers: "I'm traveling", "I'm sick", "on vacation", "big project this week", "sunt in vacanta", "sunt bolnav", "ignora aceasta saptamana"
+Triggers: "what context modes are active?", "cancel context mode", "remove sick mode"
 
 ```bash
-curl -s -X POST http://209.38.220.211:3000/api/context-mode \
-  -H "Content-Type: application/json" \
-  -d '{"reason": "REASON_HERE", "days": 5}'
+# View active
+curl -s http://209.38.220.211:3000/api/context-mode
+
+# Deactivate by ID
+curl -s -X DELETE http://209.38.220.211:3000/api/context-mode/ID_HERE
 ```
 
-- `days` = how long to flag this context (1–14). Default: 5.
-- `dimension` = optional — leave out to apply to all dimensions.
-- Tell the user: context mode is stored. Direction calculations note this context.
+---
+
+## When user wants to export their data
+
+Triggers: "export my data", "download my mirror data", "get my data", "exporta datele"
+
+Tell the user their data is available at: `http://209.38.220.211:3000/api/export`
 
 ---
 
@@ -131,3 +171,4 @@ Tone: observational, calm, curious. Never praise. Never judge. Never say "great 
 - Direction calibrates after 7+ days of conversations. Before that: "Calibrating."
 - Weekly digest pushes automatically via Telegram at configured time.
 - Proactive alerts push when any dimension trends 3 consecutive days in same direction.
+- Context mode silences anomaly alerts during unusual life periods — always activate it when context signals appear.
