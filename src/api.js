@@ -13,50 +13,61 @@ const {
 } = require('./scoring');
 
 const VALID_DIMENSIONS = ['finance', 'health', 'career', 'social', 'family'];
+const MAX_TEXT_LENGTH = 3000;
+
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_MAX = 20;
+
+function rateLimit(req, res, next) {
+  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip) || { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS };
+  if (now > entry.resetAt) { entry.count = 0; entry.resetAt = now + RATE_LIMIT_WINDOW_MS; }
+  entry.count++;
+  rateLimitMap.set(ip, entry);
+  if (rateLimitMap.size > 1000) { for (const [k, v] of rateLimitMap.entries()) { if (now > v.resetAt) rateLimitMap.delete(k); } }
+  if (entry.count > RATE_LIMIT_MAX) { return res.status(429).json({ error: 'Too many requests. Max 20 entries per minute.', retryAfter: Math.ceil((entry.resetAt - now) / 1000) }); }
+  next();
+}
+
+let alertsCache = null;
+let alertsCacheAt = 0;
+const ALERTS_CACHE_TTL = 5 * 60 * 1000;
+
+function getCachedAlerts(db, dimensions) {
+  const now = Date.now();
+  if (alertsCache && (now - alertsCacheAt) < ALERTS_CACHE_TTL) return alertsCache;
+  alertsCache = detectAlerts(db, dimensions);
+  alertsCacheAt = now;
+  return alertsCache;
+}
+
+function invalidateAlertsCache() { alertsCache = null; alertsCacheAt = 0; }
 
 module.exports = function createApi(db) {
 
-  // LOG ENTRY — parse conversation and store dimension data
-  router.post('/entry', (req, res) => {
+  router.post('/entry', rateLimit, (req, res) => {
     try {
-      const { text } = req.body;
-      if (!text || typeof text !== 'string') {
-        return res.status(400).json({ error: 'Missing or invalid "text" field' });
-      }
-
+      let { text } = req.body;
+      if (!text || typeof text !== 'string') return res.status(400).json({ error: 'Missing or invalid "text" field' });
+      if (text.length > MAX_TEXT_LENGTH) text = text.substring(0, MAX_TEXT_LENGTH);
       const entries = parseConversation(text);
-      if (entries.length === 0) {
-        return res.json({ logged: 0, message: 'No dimension data detected.' });
-      }
-
+      if (entries.length === 0) return res.json({ logged: 0, message: 'No dimension data detected.' });
       const results = [];
       for (const entry of entries) {
         const id = db.addEntry(entry.dimension, entry.score, entry.rawText, entry.metadata);
         if (isCalibrated(db, entry.dimension)) updateBaseline(db, entry.dimension);
-
-        // Auto-detect base currency from first finance entry
         if (entry.dimension === 'finance' && entry.metadata.amount && entry.metadata.amount.currency) {
-          const existingCurrency = db.getState('base_currency');
-          if (!existingCurrency) {
-            db.setState('base_currency', entry.metadata.amount.currency);
-          }
+          if (!db.getState('base_currency')) db.setState('base_currency', entry.metadata.amount.currency);
         }
-
         results.push({ id, dimension: entry.dimension, score: entry.score, keywords: entry.metadata.keywords });
       }
-
-      res.json({
-        logged: results.length,
-        entries: results,
-        message: `Logged ${results.length} dimension${results.length > 1 ? 's' : ''}: ${results.map(r => dimensionLabel(r.dimension)).join(', ')}`
-      });
-    } catch (err) {
-      console.error('POST /entry error:', err);
-      res.status(500).json({ error: 'Internal server error' });
-    }
+      invalidateAlertsCache();
+      res.json({ logged: results.length, entries: results, message: `Logged ${results.length} dimension${results.length > 1 ? 's' : ''}: ${results.map(r => dimensionLabel(r.dimension)).join(', ')}` });
+    } catch (err) { console.error('POST /entry error:', err); res.status(500).json({ error: 'Internal server error' }); }
   });
 
-  // WEEKLY DIRECTION SNAPSHOT
   router.get('/direction', (req, res) => {
     try {
       const expanded = req.query.expanded === 'true';
@@ -64,310 +75,125 @@ module.exports = function createApi(db) {
       const snapshot = getWeeklySnapshot(db, dimensions, expanded);
       snapshot.formatted = formatWeeklyText(snapshot);
       res.json(snapshot);
-    } catch (err) {
-      console.error('GET /direction error:', err);
-      res.status(500).json({ error: 'Internal server error' });
-    }
+    } catch (err) { console.error('GET /direction error:', err); res.status(500).json({ error: 'Internal server error' }); }
   });
 
-  // SINGLE DIMENSION REPORT
   router.get('/dimension/:dim', (req, res) => {
     try {
       const dim = req.params.dim.toLowerCase();
-      if (!VALID_DIMENSIONS.includes(dim)) {
-        return res.status(400).json({ error: `Invalid dimension. Use: ${VALID_DIMENSIONS.join(', ')}` });
-      }
-      const report = getDimensionReport(db, dim, req.query.expanded === 'true');
-      res.json(report);
-    } catch (err) {
-      console.error('GET /dimension error:', err);
-      res.status(500).json({ error: 'Internal server error' });
-    }
+      if (!VALID_DIMENSIONS.includes(dim)) return res.status(400).json({ error: `Invalid dimension. Use: ${VALID_DIMENSIONS.join(', ')}` });
+      res.json(getDimensionReport(db, dim, req.query.expanded === 'true'));
+    } catch (err) { console.error('GET /dimension error:', err); res.status(500).json({ error: 'Internal server error' }); }
   });
 
-  // MONTHLY REFLECTION
   router.get('/monthly', (req, res) => {
-    try {
-      const dimensions = getActiveDimensions(db);
-      res.json(getMonthlyReflection(db, dimensions));
-    } catch (err) {
-      console.error('GET /monthly error:', err);
-      res.status(500).json({ error: 'Internal server error' });
-    }
+    try { res.json(getMonthlyReflection(db, getActiveDimensions(db))); }
+    catch (err) { console.error('GET /monthly error:', err); res.status(500).json({ error: 'Internal server error' }); }
   });
 
-  // HISTORY — daily scores for a dimension
   router.get('/history/:dim', (req, res) => {
     try {
       const dim = req.params.dim.toLowerCase();
-      if (!VALID_DIMENSIONS.includes(dim)) {
-        return res.status(400).json({ error: `Invalid dimension. Use: ${VALID_DIMENSIONS.join(', ')}` });
-      }
+      if (!VALID_DIMENSIONS.includes(dim)) return res.status(400).json({ error: `Invalid dimension. Use: ${VALID_DIMENSIONS.join(', ')}` });
       const days = Math.min(parseInt(req.query.days || '30'), 90);
       res.json({ dimension: dim, days, scores: db.getDailyScores(dim, days) });
-    } catch (err) {
-      console.error('GET /history error:', err);
-      res.status(500).json({ error: 'Internal server error' });
-    }
+    } catch (err) { console.error('GET /history error:', err); res.status(500).json({ error: 'Internal server error' }); }
   });
 
-  // CONTEXT MODE — activate
-  // Note: Context mode is stored and returned via API.
-  // Threshold adjustment based on context mode is a V2 feature.
   router.post('/context-mode', (req, res) => {
     try {
       const { dimension, reason, days } = req.body;
-      if (!reason) return res.status(400).json({ error: 'Missing "reason" field' });
-      if (dimension && !VALID_DIMENSIONS.includes(dimension.toLowerCase())) {
-        return res.status(400).json({ error: `Invalid dimension. Use: ${VALID_DIMENSIONS.join(', ')}` });
-      }
-      const duration = Math.min(Math.max(parseInt(days || '5'), 1), 14);
-      db.activateContextMode(dimension || null, reason, duration);
-      res.json({
-        activated: true,
-        reason,
-        duration,
-        message: `Context mode stored for ${duration} days. Note: adaptive threshold adjustment is a V2 feature.`
-      });
-    } catch (err) {
-      console.error('POST /context-mode error:', err);
-      res.status(500).json({ error: 'Internal server error' });
-    }
+      if (!reason || typeof reason !== 'string' || reason.trim().length === 0) return res.status(400).json({ error: 'Missing or empty "reason" field' });
+      if (dimension && !VALID_DIMENSIONS.includes(dimension.toLowerCase())) return res.status(400).json({ error: `Invalid dimension. Use: ${VALID_DIMENSIONS.join(', ')}` });
+      const parsedDays = parseInt(days);
+      const duration = Math.min(Math.max(isNaN(parsedDays) ? 5 : parsedDays, 1), 14);
+      db.activateContextMode(dimension || null, reason.trim(), duration);
+      res.json({ activated: true, reason: reason.trim(), duration, message: `Context mode stored for ${duration} days.` });
+    } catch (err) { console.error('POST /context-mode error:', err); res.status(500).json({ error: 'Internal server error' }); }
   });
 
-  // CONTEXT MODE — deactivate
   router.delete('/context-mode/:id', (req, res) => {
     try {
-      db.deactivateContextMode(parseInt(req.params.id));
+      const id = parseInt(req.params.id);
+      if (isNaN(id) || id <= 0) return res.status(400).json({ error: 'Invalid context mode ID' });
+      db.deactivateContextMode(id);
       res.json({ deactivated: true });
-    } catch (err) {
-      console.error('DELETE /context-mode error:', err);
-      res.status(500).json({ error: 'Internal server error' });
-    }
+    } catch (err) { console.error('DELETE /context-mode error:', err); res.status(500).json({ error: 'Internal server error' }); }
   });
 
-  // CONTEXT MODE — list active
   router.get('/context-mode', (req, res) => {
-    try {
-      res.json({ active: db.getActiveContextModes() });
-    } catch (err) {
-      console.error('GET /context-mode error:', err);
-      res.status(500).json({ error: 'Internal server error' });
-    }
+    try { res.json({ active: db.getActiveContextModes() }); }
+    catch (err) { console.error('GET /context-mode error:', err); res.status(500).json({ error: 'Internal server error' }); }
   });
 
-  // PROACTIVE ALERTS — detect 3-day streaks, used by agent and watcher
   router.get('/alerts', (req, res) => {
     try {
       const dimensions = getActiveDimensions(db);
-      const alerts = detectAlerts(db, dimensions);
-      res.json({
-        count: alerts.length,
-        alerts,
-        checkedAt: new Date().toISOString()
-      });
-    } catch (err) {
-      console.error('GET /alerts error:', err);
-      res.status(500).json({ error: 'Internal server error' });
-    }
+      const alerts = getCachedAlerts(db, dimensions);
+      res.json({ count: alerts.length, alerts, checkedAt: new Date().toISOString() });
+    } catch (err) { console.error('GET /alerts error:', err); res.status(500).json({ error: 'Internal server error' }); }
   });
 
-  // PROACTIVE — single endpoint for agent to check at start of every conversation
-  // Returns alerts + context modes + direction summary in one call
   router.get('/proactive', (req, res) => {
     try {
       const dimensions = getActiveDimensions(db);
-      const alerts = detectAlerts(db, dimensions);
+      const alerts = getCachedAlerts(db, dimensions);
       const contextModes = db.getActiveContextModes();
       const snapshot = getWeeklySnapshot(db, dimensions);
-
-      // Only surface unacknowledged alerts
       const lastAck = db.getState('alerts_last_acked');
-      const newAlerts = lastAck
-        ? alerts.filter(a => a.detectedAt > lastAck)
-        : alerts;
-
-      res.json({
-        hasAlerts: newAlerts.length > 0,
-        alerts: newAlerts,
-        activeContextModes: contextModes,
-        directionSummary: snapshot.dimensions
-          .filter(d => d.direction7d !== 'Calibrating' && d.direction7d !== 'Insufficient data')
-          .map(d => ({ dimension: d.dimension, direction: d.direction7d, confidence: d.confidence })),
-        checkedAt: new Date().toISOString()
-      });
-    } catch (err) {
-      console.error('GET /proactive error:', err);
-      res.status(500).json({ error: 'Internal server error' });
-    }
+      const newAlerts = lastAck ? alerts.filter(a => a.detectedAt > lastAck) : alerts;
+      res.json({ hasAlerts: newAlerts.length > 0, alerts: newAlerts, activeContextModes: contextModes, directionSummary: snapshot.dimensions.filter(d => d.direction7d !== 'Calibrating' && d.direction7d !== 'Insufficient data').map(d => ({ dimension: d.dimension, direction: d.direction7d, confidence: d.confidence })), checkedAt: new Date().toISOString() });
+    } catch (err) { console.error('GET /proactive error:', err); res.status(500).json({ error: 'Internal server error' }); }
   });
 
-  // ACKNOWLEDGE ALERTS — agent calls this after surfacing alerts to user
   router.post('/alerts/ack', (req, res) => {
-    try {
-      db.setState('alerts_last_acked', new Date().toISOString());
-      res.json({ acknowledged: true, at: db.getState('alerts_last_acked') });
-    } catch (err) {
-      console.error('POST /alerts/ack error:', err);
-      res.status(500).json({ error: 'Internal server error' });
-    }
+    try { db.setState('alerts_last_acked', new Date().toISOString()); invalidateAlertsCache(); res.json({ acknowledged: true, at: db.getState('alerts_last_acked') }); }
+    catch (err) { console.error('POST /alerts/ack error:', err); res.status(500).json({ error: 'Internal server error' }); }
   });
 
-  // USER SETTINGS — timezone, weekly digest time, notification preferences
   router.get('/settings', (req, res) => {
     try {
-      res.json({
-        timezone: db.getState('user_timezone') || 'UTC',
-        weeklyDigestHour: parseInt(db.getState('weekly_digest_hour') || '8'),
-        weeklyDigestDay: db.getState('weekly_digest_day') || 'monday',
-        notificationsEnabled: db.getState('notifications_enabled') !== 'false',
-        language: db.getState('user_language') || 'en'
-      });
-    } catch (err) {
-      console.error('GET /settings error:', err);
-      res.status(500).json({ error: 'Internal server error' });
-    }
+      res.json({ timezone: db.getState('user_timezone') || 'UTC', weeklyDigestHour: parseInt(db.getState('weekly_digest_hour') || '8'), weeklyDigestDay: db.getState('weekly_digest_day') || 'monday', notificationsEnabled: db.getState('notifications_enabled') !== 'false', language: db.getState('user_language') || 'en' });
+    } catch (err) { console.error('GET /settings error:', err); res.status(500).json({ error: 'Internal server error' }); }
   });
 
   router.post('/settings', (req, res) => {
     try {
       const allowed = ['timezone', 'weeklyDigestHour', 'weeklyDigestDay', 'notificationsEnabled', 'language'];
       const updated = [];
-
-      if (req.body.timezone !== undefined) {
-        db.setState('user_timezone', req.body.timezone);
-        updated.push('timezone');
-      }
-      if (req.body.weeklyDigestHour !== undefined) {
-        const h = Math.min(Math.max(parseInt(req.body.weeklyDigestHour), 0), 23);
-        db.setState('weekly_digest_hour', String(h));
-        updated.push('weeklyDigestHour');
-      }
-      if (req.body.weeklyDigestDay !== undefined) {
-        const valid = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
-        if (valid.includes(req.body.weeklyDigestDay.toLowerCase())) {
-          db.setState('weekly_digest_day', req.body.weeklyDigestDay.toLowerCase());
-          updated.push('weeklyDigestDay');
-        }
-      }
-      if (req.body.notificationsEnabled !== undefined) {
-        db.setState('notifications_enabled', req.body.notificationsEnabled ? 'true' : 'false');
-        updated.push('notificationsEnabled');
-      }
-      if (req.body.language !== undefined) {
-        db.setState('user_language', req.body.language);
-        updated.push('language');
-      }
-
-      if (updated.length === 0) {
-        return res.status(400).json({ error: `No valid fields. Allowed: ${allowed.join(', ')}` });
-      }
-
-      res.json({ updated, settings: {
-        timezone: db.getState('user_timezone') || 'UTC',
-        weeklyDigestHour: parseInt(db.getState('weekly_digest_hour') || '8'),
-        weeklyDigestDay: db.getState('weekly_digest_day') || 'monday',
-        notificationsEnabled: db.getState('notifications_enabled') !== 'false',
-        language: db.getState('user_language') || 'en'
-      }});
-    } catch (err) {
-      console.error('POST /settings error:', err);
-      res.status(500).json({ error: 'Internal server error' });
-    }
+      if (req.body.timezone !== undefined) { db.setState('user_timezone', String(req.body.timezone)); updated.push('timezone'); }
+      if (req.body.weeklyDigestHour !== undefined) { const h = parseInt(req.body.weeklyDigestHour); if (isNaN(h)) return res.status(400).json({ error: 'weeklyDigestHour must be a number 0-23' }); db.setState('weekly_digest_hour', String(Math.min(Math.max(h, 0), 23))); updated.push('weeklyDigestHour'); }
+      if (req.body.weeklyDigestDay !== undefined) { const valid = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday']; if (!valid.includes(req.body.weeklyDigestDay.toLowerCase())) return res.status(400).json({ error: `weeklyDigestDay must be one of: ${valid.join(', ')}` }); db.setState('weekly_digest_day', req.body.weeklyDigestDay.toLowerCase()); updated.push('weeklyDigestDay'); }
+      if (req.body.notificationsEnabled !== undefined) { db.setState('notifications_enabled', req.body.notificationsEnabled ? 'true' : 'false'); updated.push('notificationsEnabled'); }
+      if (req.body.language !== undefined) { db.setState('user_language', String(req.body.language)); updated.push('language'); }
+      if (updated.length === 0) return res.status(400).json({ error: `No valid fields. Allowed: ${allowed.join(', ')}` });
+      res.json({ updated, settings: { timezone: db.getState('user_timezone') || 'UTC', weeklyDigestHour: parseInt(db.getState('weekly_digest_hour') || '8'), weeklyDigestDay: db.getState('weekly_digest_day') || 'monday', notificationsEnabled: db.getState('notifications_enabled') !== 'false', language: db.getState('user_language') || 'en' }});
+    } catch (err) { console.error('POST /settings error:', err); res.status(500).json({ error: 'Internal server error' }); }
   });
 
-  // EXPORT — full data dump, all tables, portable JSON
   router.get('/export', (req, res) => {
     try {
-      const dimensions = ['finance', 'health', 'career', 'social', 'family'];
-
-      // All raw entries
-      const entries = VALID_DIMENSIONS.flatMap(dim =>
-        db.getEntries(dim, 3650) // 10 years max
-          .map(e => ({
-            ...e,
-            metadata: e.metadata ? JSON.parse(e.metadata) : null
-          }))
-      ).sort((a, b) => a.created_at.localeCompare(b.created_at));
-
-      // All daily scores
+      const entries = VALID_DIMENSIONS.flatMap(dim => db.getEntries(dim, 3650).map(e => ({ ...e, metadata: e.metadata ? JSON.parse(e.metadata) : null }))).sort((a, b) => a.created_at.localeCompare(b.created_at));
       const dailyScores = {};
-      for (const dim of VALID_DIMENSIONS) {
-        dailyScores[dim] = db.getDailyScores(dim, 3650);
-      }
-
-      // All baselines
-      const baselines = db.getAllBaselines();
-
-      // All context modes (active + historical)
-      const contextModes = db.getActiveContextModes();
-
-      // System state
-      const stateKeys = [
-        'calibration_start', 'calibration_complete', 'base_currency',
-        'user_timezone', 'weekly_digest_hour', 'weekly_digest_day',
-        'notifications_enabled', 'user_language', 'alerts_last_acked'
-      ];
+      for (const dim of VALID_DIMENSIONS) dailyScores[dim] = db.getDailyScores(dim, 3650);
+      const stateKeys = ['calibration_start','calibration_complete','base_currency','user_timezone','weekly_digest_hour','weekly_digest_day','notifications_enabled','user_language','alerts_last_acked'];
       const systemState = {};
-      for (const key of stateKeys) {
-        const val = db.getState(key);
-        if (val !== null) systemState[key] = val;
-      }
-
-      const exportData = {
-        meta: {
-          version: '1.1.0',
-          exportedAt: new Date().toISOString(),
-          totalEntries: entries.length,
-          activeDimensions: getActiveDimensions(db),
-          calibrationStart: db.getState('calibration_start')
-        },
-        systemState,
-        baselines,
-        entries,
-        dailyScores,
-        contextModes
-      };
-
-      // Force download as file
+      for (const key of stateKeys) { const val = db.getState(key); if (val !== null) systemState[key] = val; }
+      const exportData = { meta: { version: '1.1.0', exportedAt: new Date().toISOString(), totalEntries: entries.length, activeDimensions: getActiveDimensions(db), calibrationStart: db.getState('calibration_start') }, systemState, baselines: db.getAllBaselines(), entries, dailyScores, contextModes: db.getActiveContextModes() };
       const filename = `digital-mirror-export-${new Date().toISOString().slice(0,10)}.json`;
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Content-Type', 'application/json');
       res.json(exportData);
-    } catch (err) {
-      console.error('GET /export error:', err);
-      res.status(500).json({ error: 'Internal server error' });
-    }
+    } catch (err) { console.error('GET /export error:', err); res.status(500).json({ error: 'Internal server error' }); }
   });
 
-  // SYSTEM STATUS
   router.get('/status', (req, res) => {
     try {
       const dimensions = getActiveDimensions(db);
       const calibration = {};
-      for (const dim of VALID_DIMENSIONS) {
-        calibration[dim] = isCalibrated(db, dim);
-      }
-
-      res.json({
-        version: '1.1.0',
-        totalEntries: db.getTotalEntries(),
-        activeDimensions: dimensions,
-        calibration,
-        baseCurrency: db.getState('base_currency') || 'Not detected yet',
-        contextModes: db.getActiveContextModes(),
-        calibrationStart: db.getState('calibration_start'),
-        activeAlerts: detectAlerts(db, dimensions).length,
-        settings: {
-          timezone: db.getState('user_timezone') || 'UTC',
-          weeklyDigestHour: parseInt(db.getState('weekly_digest_hour') || '8'),
-          notificationsEnabled: db.getState('notifications_enabled') !== 'false'
-        }
-      });
-    } catch (err) {
-      console.error('GET /status error:', err);
-      res.status(500).json({ error: 'Internal server error' });
-    }
+      for (const dim of VALID_DIMENSIONS) calibration[dim] = isCalibrated(db, dim);
+      res.json({ version: '1.1.0', totalEntries: db.getTotalEntries(), activeDimensions: dimensions, calibration, baseCurrency: db.getState('base_currency') || 'Not detected yet', contextModes: db.getActiveContextModes(), calibrationStart: db.getState('calibration_start'), activeAlerts: getCachedAlerts(db, dimensions).length, settings: { timezone: db.getState('user_timezone') || 'UTC', weeklyDigestHour: parseInt(db.getState('weekly_digest_hour') || '8'), notificationsEnabled: db.getState('notifications_enabled') !== 'false' } });
+    } catch (err) { console.error('GET /status error:', err); res.status(500).json({ error: 'Internal server error' }); }
   });
 
   return router;
