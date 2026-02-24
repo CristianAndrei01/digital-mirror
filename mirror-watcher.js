@@ -234,24 +234,46 @@ async function checkAlerts() {
 
     const { hasAlerts, alerts } = res.body;
     if (!hasAlerts || !alerts?.length) {
-      log(`[Alerts] No new alerts`);
+      log(`[Alerts] No active alerts`);
       return;
     }
 
-    log(`[Alerts] ${alerts.length} alert(s) — pushing to user`);
+    const today = todayStr();
 
+    // Track sent alerts by dimension:type:date — never re-send same alert same day
+    if (!state.alertsSentToday) state.alertsSentToday = {};
+
+    // Clear previous days
+    for (const key of Object.keys(state.alertsSentToday)) {
+      if (!key.endsWith(today)) delete state.alertsSentToday[key];
+    }
+
+    let sentCount = 0;
     for (const alert of alerts) {
+      const key = `${alert.dimension}:${alert.type}:${today}`;
+      if (state.alertsSentToday[key]) {
+        log(`[Alerts] Already sent today — ${alert.dimension} ${alert.type}, skipping`);
+        continue;
+      }
+
       const isUp = alert.type === 'ascending';
       const msg  = isUp
         ? `◈ Digital Mirror\n\n↑ <b>${capitalize(alert.dimension)}</b> is trending up\n\n${alert.message}`
         : `◈ Digital Mirror\n\n↓ <b>${capitalize(alert.dimension)}</b> needs attention\n\n${alert.message}`;
-      await sendTelegram(msg);
+
+      const sent = await sendTelegram(msg);
+      if (sent) {
+        state.alertsSentToday[key] = new Date().toISOString();
+        sentCount++;
+      }
     }
 
-    // Acknowledge — prevents re-sending same alerts
-    await mirrorPost('/alerts/ack', {});
-    state.lastAlertCheck = new Date().toISOString();
-    saveState();
+    if (sentCount > 0) {
+      log(`[Alerts] ${sentCount} alert(s) sent`);
+      await mirrorPost('/alerts/ack', {});
+      saveState();
+    }
+
   } catch (e) { logErr('Alert check failed', e); }
 }
 
@@ -479,8 +501,13 @@ function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; 
 // MAIN
 // ═══════════════════════════════════════════════════════════════
 async function main() {
+  const G = '\x1b[38;2;0;212;170m'; // #00d4aa
+  const R = '\x1b[0m';
   console.log('');
-  console.log('  ◈ Digital Mirror — Session Watcher v2.0');
+  console.log(`${G}  🪞 Digital Mirror 1.1.0 — You talk. I calculate.${R}`);
+  console.log(`${G}  Direction engine. Running silent.${R}`);
+  console.log(`${G}  By the time you ask, I already know which way you're heading.${R}`);
+  console.log('');
   console.log(`  Adapter:       ${config.adapter}`);
   console.log(`  Endpoint:      ${config.endpoint}`);
   console.log(`  API Base:      ${config.apiBase}`);
