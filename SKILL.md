@@ -1,5 +1,5 @@
 name: digital-mirror
-description: Direction engine for life. Tracks whether the user is ascending or descending across 5 dimensions. Use when user asks about direction, weekly report, monthly reflection, life status, or when proactive alerts need surfacing.
+description: Direction engine for life. Tracks whether the user is ascending or descending across 5 dimensions. Use when user asks about direction, weekly report, monthly reflection, life status, or when proactive alerts need surfacing. Also use when user mentions being sick, traveling, on vacation, overwhelmed, stressed, or any life context change that could affect their patterns — activate context mode automatically in these cases.
 metadata: {"clawdbot":{"emoji":"🪞"}}
 ---
 # Digital Mirror
