@@ -975,6 +975,7 @@ function renderDims(dims, calibration) {
     const icon = ICONS[d.dimension] || '◈';
     const isCalib = calibration?.[d.dimension];
     const [dN, dT] = (d.daysWithData||'0/14').split('/').map(Number);
+    const dNcapped = Math.min(dN, dT);
     const pct = Math.min(100, Math.round((dN/(dT||14))*100));
 
     // Last row balancing
@@ -992,8 +993,8 @@ function renderDims(dims, calibration) {
         <div class="dim-dir ${c}">${arrow(d.direction7d)}${d.direction7d || 'Calibrating'}</div>
         <div class="dim-stab">${d.stability || '—'}</div>
         ${!isCalib ? `
-          <div class="calib-track"><div class="calib-fill" style="width:${pct}%"></div></div>
-          <div class="calib-days">${dN}/${dT||14} days</div>
+          <div class="calib-track"><div class="calib-fill" style="width:${Math.min(100, Math.round((dNcapped/(dT||14))*100))}%"></div></div>
+          <div class="calib-days">${dNcapped}/${dT||14} days</div>
         ` : ''}
       </div>
     `;
@@ -1012,7 +1013,7 @@ function renderWeekly(dir) {
         <div class="dir-dim">${ICONS[d.dimension]||'◈'} ${name}</div>
         <div><span class="dir-badge ${c}">${d.direction7d||'Calibrating'}</span></div>
         <div class="dir-stab">${d.stability||'—'}</div>
-        <div class="dir-days">${d.daysWithData||'—'}</div>
+        <div class="dir-days">${(() => { const [n,t] = (d.daysWithData||'0/14').split('/').map(Number); return `${Math.min(n,t)}/${t}`; })()}</div>
       </div>
     `;
   }).join('');
