@@ -276,6 +276,70 @@ module.exports = function createApi(db) {
     }
   });
 
+  // EXPORT — full data dump, all tables, portable JSON
+  router.get('/export', (req, res) => {
+    try {
+      const dimensions = ['finance', 'health', 'career', 'social', 'family'];
+
+      // All raw entries
+      const entries = VALID_DIMENSIONS.flatMap(dim =>
+        db.getEntries(dim, 3650) // 10 years max
+          .map(e => ({
+            ...e,
+            metadata: e.metadata ? JSON.parse(e.metadata) : null
+          }))
+      ).sort((a, b) => a.created_at.localeCompare(b.created_at));
+
+      // All daily scores
+      const dailyScores = {};
+      for (const dim of VALID_DIMENSIONS) {
+        dailyScores[dim] = db.getDailyScores(dim, 3650);
+      }
+
+      // All baselines
+      const baselines = db.getAllBaselines();
+
+      // All context modes (active + historical)
+      const contextModes = db.getActiveContextModes();
+
+      // System state
+      const stateKeys = [
+        'calibration_start', 'calibration_complete', 'base_currency',
+        'user_timezone', 'weekly_digest_hour', 'weekly_digest_day',
+        'notifications_enabled', 'user_language', 'alerts_last_acked'
+      ];
+      const systemState = {};
+      for (const key of stateKeys) {
+        const val = db.getState(key);
+        if (val !== null) systemState[key] = val;
+      }
+
+      const exportData = {
+        meta: {
+          version: '1.1.0',
+          exportedAt: new Date().toISOString(),
+          totalEntries: entries.length,
+          activeDimensions: getActiveDimensions(db),
+          calibrationStart: db.getState('calibration_start')
+        },
+        systemState,
+        baselines,
+        entries,
+        dailyScores,
+        contextModes
+      };
+
+      // Force download as file
+      const filename = `digital-mirror-export-${new Date().toISOString().slice(0,10)}.json`;
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', 'application/json');
+      res.json(exportData);
+    } catch (err) {
+      console.error('GET /export error:', err);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   // SYSTEM STATUS
   router.get('/status', (req, res) => {
     try {
