@@ -870,7 +870,7 @@
         <path d="M40 8 L58 28 L40 48 L22 28 Z" fill="url(#lg2)" opacity="0.9"/>
         <path d="M40 32 L58 52 L40 72 L22 52 Z" fill="url(#lg2)" opacity="0.35"/>
       </svg>
-      Digital Mirror · v1.1.0
+      Digital Mirror · v1.1.0 — built by <a href="https://vanguardxyz.ai" target="_blank" style="color:var(--accent);margin-left:4px;">Vanguard</a> <span style="margin:0 2px;opacity:0.4">&</span> Cristian Andrei
     </div>
     <div class="footer-links">
       <a href="/api/status">status</a>
@@ -911,7 +911,7 @@ async function load() {
     const [status, dir] = await Promise.all([sRes.json(), dRes.json()]);
 
     $('error-banner').style.display = 'none';
-    setStatus('', 'v1.0.0');
+    setStatus('', 'v1.1.0');
 
     renderStats(status);
 
