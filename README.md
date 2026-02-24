@@ -63,7 +63,7 @@ Day, time, and timezone are fully configurable — from dashboard or by telling 
 
 ## Context Mode
 
-Tell your agent "I'm traveling this week" or "sick for 3 days" and Mirror stores that context. Direction calculations note the context period so anomalies don't skew your baseline.
+Tell your agent "I'm traveling this week" or "sick for 3 days" and Mirror stores that context automatically. Direction calculations note the context period so anomalies don't skew your baseline.
 
 ---
 
@@ -125,7 +125,8 @@ For systemd: see `mirror-watcher.service`.
   Telegram, Discord,       Alert detection            Baseline scoring
   WhatsApp, Slack          Weekly digest push         REST API + dashboard
                            Timezone-aware             Proactive alerts
-                           Telegram notifications     Settings API
+                           Context auto-detection     Settings API
+                           Telegram notifications     Export API
 ```
 
 ---
@@ -144,6 +145,7 @@ For systemd: see `mirror-watcher.service`.
 | `GET /api/settings` | Get user settings |
 | `POST /api/settings` | Update timezone, digest time, language |
 | `GET/POST /api/context-mode` | Context mode management |
+| `GET /api/export` | Full data export (JSON) |
 | `GET /api/status` | System status |
 
 ---
@@ -157,8 +159,10 @@ For systemd: see `mirror-watcher.service`.
 - [x] Proactive streak alerts (3-day consecutive detection)
 - [x] Weekly digest push (Telegram, timezone-aware)
 - [x] Context Mode (vacation, illness, crunch periods)
+- [x] Context Mode auto-detection from conversation
 - [x] Settings API (timezone, digest schedule, language)
 - [x] Dashboard + REST API
+- [x] Full data export
 - [x] Open source (MIT)
 
 ### v2 — Protocol
@@ -171,7 +175,6 @@ V1 is a tool you install for yourself. V2 is infrastructure other people build o
 - [ ] **Custom Dimensions** — athletes add Training Load. Students add Academic. Founders add Company Health. Open interface, extensible by design.
 - [ ] **Multi-user** — two people, one server, separate baselines. Couples, business partners, coach and client.
 - [ ] **Adaptive Context Mode** — detection thresholds adjust during flagged periods. Context mode becomes functional, not cosmetic.
-- [ ] **Full Data Export** — complete JSON of everything Mirror knows about you. Your data, in full, on demand.
 - [ ] **Daily Brief** — optional morning push. Two lines. What's moving.
 
 ### v3 — Upcoming
@@ -210,4 +213,4 @@ Contributions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
-MIT — see [LICENSE](LICENSE) · Built by [Cristian Andrei](https://github.com/CristianAndrei01)
+MIT — see [LICENSE](LICENSE) · Built by [Vanguard](https://vanguardxyz.ai) & [Cristian Andrei](https://github.com/CristianAndrei01)
