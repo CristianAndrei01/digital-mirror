@@ -885,6 +885,7 @@
 const API = '/api';
 const ICONS = { finance:'💰', health:'🏃', career:'🚀', social:'🤝', family:'👨‍👩‍👧‍👦' };
 const $ = id => document.getElementById(id);
+const escapeHtml = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 
 function setStatus(cls, text) {
   $('status-dot').className = 'dot ' + cls;
@@ -1106,8 +1107,8 @@ async function loadContextModes() {
     list.innerHTML = modes.map(m => `
       <div class="ctx-item">
         <div>
-          <div class="ctx-reason">${m.reason}</div>
-          <div class="ctx-meta">${m.dimension ? m.dimension + ' · ' : 'all dimensions · '}${m.remaining_days ?? m.days} day(s) remaining</div>
+          <div class="ctx-reason">${escapeHtml(m.reason)}</div>
+          <div class="ctx-meta">${escapeHtml(m.dimension) ? escapeHtml(m.dimension) + ' · ' : 'all dimensions · '}${m.remaining_days ?? m.days} day(s) remaining</div>
         </div>
         <button class="ctx-del" onclick="deleteContextMode(${m.id})">Remove</button>
       </div>
