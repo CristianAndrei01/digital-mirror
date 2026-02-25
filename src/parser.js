@@ -206,11 +206,11 @@ function extractAmount(text, dimension) {
 
   // Match patterns like: $450, 450$, 200 EUR, €50, 1,200.50
   const patterns = [
-    /\$\s?([\d,]+\.?\d*)/g,
-    /€\s?([\d,]+\.?\d*)/g,
-    /£\s?([\d,]+\.?\d*)/g,
-    /([\d,]+\.?\d*)\s*(?:usd|eur|ron|gbp|dollars?|euros?|lei)/gi,
-    /(?:spent|paid|cost|bought|earned|saved|received)\s+\$?([\d,]+\.?\d*)/gi
+    /\$\s?([\d,]+\.?\d*)/,
+    /€\s?([\d,]+\.?\d*)/,
+    /£\s?([\d,]+\.?\d*)/,
+    /([\d,]+\.?\d*)\s*(?:usd|eur|ron|gbp|dollars?|euros?|lei)/i,
+    /(?:spent|paid|cost|bought|earned|saved|received)\s+\$?([\d,]+\.?\d*)/i
   ];
 
   for (const pattern of patterns) {
