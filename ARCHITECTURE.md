@@ -35,7 +35,8 @@
 │  GET  /api/dimension/:name GET /api/monthly                      │
 │  GET  /api/alerts          GET /api/proactive                    │
 │  POST /api/alerts/ack      GET/POST /api/settings                │
-│  GET/POST /api/context-mode GET /api/status                      │
+│  GET/POST /api/context-mode GET /api/status
+│  GET  /api/export                                  │
 │                                                                  │
 │  dashboard/dashboard.html  → Served at /dashboard               │
 └──────────────────────────────────────────────────────────────────┘
@@ -214,7 +215,8 @@ USER_TIMEZONE=Europe/Bucharest
 ```
 digital-mirror/
 ├── server.js              — Express server, routes
-├── api.js                 — REST endpoints
+├── src/
+│   ├── api.js             — REST endpoints (rate limiting, validation)
 ├── parser.js              — Conversation parser, scorer
 ├── scoring.js             — Direction engine, alert detection
 ├── mirror-watcher.js      — Sidecar: forwarding + push notifications
