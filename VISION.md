@@ -96,7 +96,7 @@ V1 is a tool you install for yourself. V2 is infrastructure other people build o
 
 **Adaptive Context Mode** — context mode currently stores context but doesn't adjust calculations. V2 makes it functional: if you're sick for five days, the detection threshold adjusts. Anomalies during flagged periods are weighted accordingly.
 
-**Full Data Export** — complete JSON dump of everything Mirror knows about you. This is non-negotiable for a privacy-first, self-hosted tool. Your data, in full, whenever you want it.
+**Full Data Export** — complete JSON dump of everything Mirror knows about you. ✓ Shipped in v1.1. Available at `GET /api/export`.
 
 **Daily Brief** — optional morning push. Two lines. What's ascending, what's descending. Configurable frequency. Some people want weekly. Some want to feel the daily pulse.
 
@@ -160,5 +160,5 @@ Mirror is the infrastructure for that. Everything else follows.
 
 ---
 
-*Digital Mirror is MIT licensed. Built by Cristian Andrei.*  
+*Digital Mirror is MIT licensed. Built by [Vanguard](https://vanguardxyz.ai) & Cristian Andrei.*  
 *github.com/CristianAndrei01/digital-mirror*
