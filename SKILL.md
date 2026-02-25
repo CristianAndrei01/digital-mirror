@@ -13,14 +13,14 @@ Direction engine. Not a tracker — a signal. Shows whether your life is ascendi
 Before responding to anything, silently check for proactive alerts:
 
 ```bash
-curl -s http://209.38.220.211:3000/api/proactive
+curl -s http://localhost:3000/api/proactive
 ```
 
 **If `hasAlerts: true`:**
 - Surface alerts naturally at the start of your reply — do not ignore them
 - Ascending alert → brief motivational observation ("Health has been rising 3 days straight.")
 - Declining alert → calm, non-judgmental observation ("Finance signal has been slipping. Worth a look.")
-- Then acknowledge: `curl -s -X POST http://209.38.220.211:3000/api/alerts/ack`
+- Then acknowledge: `curl -s -X POST http://localhost:3000/api/alerts/ack`
 - Continue with whatever the user asked
 
 **If `hasAlerts: false`:** say nothing, continue normally.
@@ -42,7 +42,7 @@ curl -s http://209.38.220.211:3000/api/proactive
 **Action — run silently, do not mention it to the user unless they ask:**
 
 ```bash
-curl -s -X POST http://209.38.220.211:3000/api/context-mode \
+curl -s -X POST http://localhost:3000/api/context-mode \
   -H "Content-Type: application/json" \
   -d '{"reason": "REASON_HERE", "days": DAYS_HERE}'
 ```
@@ -54,7 +54,7 @@ curl -s -X POST http://209.38.220.211:3000/api/context-mode \
 
 Example for "I'm sick for 3 days":
 ```bash
-curl -s -X POST http://209.38.220.211:3000/api/context-mode \
+curl -s -X POST http://localhost:3000/api/context-mode \
   -H "Content-Type: application/json" \
   -d '{"reason": "sick - cold", "days": 3}'
 ```
@@ -66,7 +66,7 @@ curl -s -X POST http://209.38.220.211:3000/api/context-mode \
 Triggers: "what's my direction?", "weekly report", "how am I doing?", "direction?", "cum merg lucrurile?", "raport saptamanal", "status", "weekly direction", "mirror"
 
 ```bash
-curl -s http://209.38.220.211:3000/api/direction | python3 -c "
+curl -s http://localhost:3000/api/direction | python3 -c "
 import sys,json
 d=json.load(sys.stdin)
 print(d.get('formatted','No data yet — still calibrating.'))
@@ -80,7 +80,7 @@ print(d.get('formatted','No data yet — still calibrating.'))
 Triggers: "how's my health?", "finance status", "career direction", "social life?", "cum e sanatatea mea?"
 
 ```bash
-curl -s "http://209.38.220.211:3000/api/dimension/DIMENSION?expanded=true"
+curl -s "http://localhost:3000/api/dimension/DIMENSION?expanded=true"
 ```
 
 Replace DIMENSION with: `finance`, `health`, `career`, `social`, or `family`
@@ -92,7 +92,7 @@ Replace DIMENSION with: `finance`, `health`, `career`, `social`, or `family`
 Triggers: "monthly report", "monthly reflection", "how was my month?", "raport lunar", "luna asta"
 
 ```bash
-curl -s http://209.38.220.211:3000/api/monthly
+curl -s http://localhost:3000/api/monthly
 ```
 
 ---
@@ -103,10 +103,10 @@ Triggers: "what context modes are active?", "cancel context mode", "remove sick 
 
 ```bash
 # View active
-curl -s http://209.38.220.211:3000/api/context-mode
+curl -s http://localhost:3000/api/context-mode
 
 # Deactivate by ID
-curl -s -X DELETE http://209.38.220.211:3000/api/context-mode/ID_HERE
+curl -s -X DELETE http://localhost:3000/api/context-mode/ID_HERE
 ```
 
 ---
@@ -115,7 +115,7 @@ curl -s -X DELETE http://209.38.220.211:3000/api/context-mode/ID_HERE
 
 Triggers: "export my data", "download my mirror data", "get my data", "exporta datele"
 
-Tell the user their data is available at: `http://209.38.220.211:3000/api/export`
+Tell the user their data is available at: `http://localhost:3000/api/export`
 
 ---
 
@@ -125,10 +125,10 @@ Triggers: "change my weekly digest to Friday", "set timezone to Bucharest", "sen
 
 ```bash
 # View current settings
-curl -s http://209.38.220.211:3000/api/settings
+curl -s http://localhost:3000/api/settings
 
 # Update settings
-curl -s -X POST http://209.38.220.211:3000/api/settings \
+curl -s -X POST http://localhost:3000/api/settings \
   -H "Content-Type: application/json" \
   -d '{"weeklyDigestHour": 8, "weeklyDigestDay": "monday", "timezone": "Europe/Bucharest"}'
 ```
